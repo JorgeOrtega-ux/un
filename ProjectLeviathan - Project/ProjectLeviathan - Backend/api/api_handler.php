@@ -104,7 +104,7 @@ if ($action === 'get_user_groups') {
     exit;
 }
 
-// --- ACCIÓN: OBTENER MENSAJES DE UN GRUPO (VERIFICACIÓN DE MEMBRESÍA) ---
+// --- ACCIÓN: OBTENER MENSAJES DE UN GRUPO (CON HISTORIAL) ---
 if ($action === 'get_chat_messages') {
     $groupUuid = $_GET['group_uuid'] ?? '';
     if (empty($userId) || empty($groupUuid)) {
@@ -112,23 +112,35 @@ if ($action === 'get_chat_messages') {
         exit;
     }
     try {
+        // 1. Validar que el usuario es miembro del grupo
         $stmt_check = $pdo->prepare("SELECT id FROM group_members WHERE user_id = :user_id AND group_uuid = :group_uuid");
         $stmt_check->execute(['user_id' => $userId, 'group_uuid' => $groupUuid]);
         if ($stmt_check->rowCount() === 0) {
-            echo json_encode(['success' => false, 'message' => 'Ya no perteneces a este grupo.']);
+            echo json_encode(['success' => false, 'message' => 'No perteneces a este grupo.']);
             exit;
         }
 
-        echo json_encode(['success' => true, 'messages' => []]);
+        // 2. Obtener los mensajes del grupo de la base de datos
+        $stmt_messages = $pdo->prepare(
+            "SELECT gm.user_id, u.username, gm.message_text AS message, gm.created_at AS timestamp
+             FROM group_messages gm
+             JOIN users u ON gm.user_id = u.id
+             WHERE gm.group_uuid = :group_uuid
+             ORDER BY gm.created_at ASC"
+        );
+        $stmt_messages->execute(['group_uuid' => $groupUuid]);
+        $messages = $stmt_messages->fetchAll(PDO::FETCH_ASSOC);
+
+        // 3. Devolver los mensajes obtenidos
+        echo json_encode(['success' => true, 'messages' => $messages]);
 
     } catch (PDOException $e) {
         error_log("API Error (get_chat_messages): " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'Error del servidor al verificar la membresía.']);
+        echo json_encode(['success' => false, 'message' => 'Error del servidor al cargar los mensajes.']);
     }
     exit;
 }
 
-// (El resto del archivo permanece igual)
 
 // --- ACCIÓN: OBTENER TODOS LOS MUNICIPIOS ---
 if ($action === 'get_municipalities') {
