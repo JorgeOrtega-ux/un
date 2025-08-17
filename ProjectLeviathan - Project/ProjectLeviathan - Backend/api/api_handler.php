@@ -122,11 +122,11 @@ if ($action === 'get_chat_messages') {
 
         // 2. Obtener los mensajes del grupo de la base de datos
         $stmt_messages = $pdo->prepare(
-            "SELECT gm.user_id, u.username, gm.message_text AS message, gm.created_at AS timestamp
+            "SELECT gm.user_id, u.username, gm.message_text AS message, gm.sent_at AS timestamp
              FROM group_messages gm
              JOIN users u ON gm.user_id = u.id
              WHERE gm.group_uuid = :group_uuid
-             ORDER BY gm.created_at ASC"
+             ORDER BY gm.sent_at ASC"
         );
         $stmt_messages->execute(['group_uuid' => $groupUuid]);
         $messages = $stmt_messages->fetchAll(PDO::FETCH_ASSOC);

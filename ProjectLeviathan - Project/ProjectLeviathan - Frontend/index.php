@@ -24,10 +24,10 @@
         csrfToken: '<?php echo $_SESSION['csrf_token']; ?>',
         apiUrl: '<?php echo str_replace('ProjectLeviathan - Frontend', 'ProjectLeviathan - Backend/api/api_handler.php', getBaseUrl()); ?>',
         userPreferences: <?php echo isset($_SESSION['user_preferences']) ? json_encode($_SESSION['user_preferences']) : '{}'; ?>,
-        // --- INICIO DE LA MODIFICACIÓN ---
-        userId: <?php echo isset($_SESSION['user_id']) ? json_encode($_SESSION['user_id']) : 'null'; ?>,
+        // --- INICIO DE LA CORRECCIÓN ---
+        userId: <?php echo isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 'null'; ?>,
         username: <?php echo isset($_SESSION['username']) ? json_encode($_SESSION['username']) : 'null'; ?>
-        // --- FIN DE LA MODIFICACIÓN ---
+        // --- FIN DE LA CORRECCIÓN ---
     };
 </script>
     
