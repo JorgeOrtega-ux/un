@@ -381,7 +381,17 @@ INSERT INTO `group_university` (`uuid`, `group_title`, `municipality_id`) VALUES
 
 
 
-
+CREATE TABLE `group_messages` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `uuid` VARCHAR(36) NOT NULL UNIQUE,
+  `group_uuid` VARCHAR(36) NOT NULL,
+  `user_id` INT(11) UNSIGNED NOT NULL,
+  `message_text` TEXT NOT NULL,
+  `sent_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  INDEX `idx_group_uuid` (`group_uuid`),
+  CONSTRAINT `fk_messages_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 
 
