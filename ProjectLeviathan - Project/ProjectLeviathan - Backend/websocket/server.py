@@ -127,7 +127,6 @@ async def broadcast_message(group_uuid, message_data):
             except websockets.exceptions.ConnectionClosed:
                 pass
 
-# --- INICIO DE LA MODIFICACIÓN: GUARDAR Y OBTENER CONTEXTO DE RESPUESTA ---
 async def save_message_to_db(group_uuid, user_id, message_text, reply_to_id=None):
     connection = get_db_connection()
     if not connection:
@@ -173,7 +172,6 @@ async def get_reply_context(reply_to_id):
     finally:
         cursor.close()
         connection.close()
-# --- FIN DE LA MODIFICACIÓN ---
 
 async def chat_handler(websocket):
     group_uuid = None
@@ -238,9 +236,7 @@ async def chat_handler(websocket):
 
                 if data.get('type') == 'chat_message':
                     message_text = data.get('message', '').strip()
-                    # --- INICIO DE LA MODIFICACIÓN: CAPTURAR ID DE RESPUESTA ---
                     reply_to_id = data.get('reply_to_message_id')
-                    # --- FIN DE LA MODIFICACIÓN ---
 
                     if len(message_text) > MAX_MESSAGE_LENGTH:
                         await websocket.send(json.dumps({
@@ -250,24 +246,20 @@ async def chat_handler(websocket):
                         continue
 
                     if message_text:
-                        # --- INICIO DE LA MODIFICACIÓN: PASAR ID DE RESPUESTA ---
                         new_message_id = await save_message_to_db(group_uuid, user_id, message_text, reply_to_id)
                         if new_message_id:
                             reply_context = await get_reply_context(reply_to_id)
-
                             message_data = {
                                 "type": "new_message",
                                 "message_id": new_message_id,
                                 "user_id": user_id,
                                 "username": username,
                                 "message": message_text,
-                                "timestamp": datetime.now().isoformat(),
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
                                 "reply_context": reply_context,
                                 "is_deleted": False
                             }
                             await broadcast_message(group_uuid, message_data)
-                        # --- FIN DE LA MODIFICACIÓN ---
-                # --- INICIO DE LA MODIFICACIÓN: MANEJAR ELIMINACIÓN DE MENSAJES ---
                 elif data.get('type') == 'delete_message':
                     message_id_to_delete = data.get('message_id')
                     if message_id_to_delete:
@@ -275,34 +267,31 @@ async def chat_handler(websocket):
                         if connection:
                             cursor = connection.cursor(dictionary=True)
                             try:
-                                # Primero, verificamos que el mensaje existe, no está eliminado y pertenece al usuario
-                                query = "SELECT user_id, sent_at FROM group_messages WHERE id = %s AND is_deleted = 0"
+                                # --- INICIO DE LA MODIFICACIÓN ---
+                                # Se pide a la base de datos que calcule la edad del mensaje en segundos.
+                                # Esto resuelve el problema de las zonas horarias.
+                                query = "SELECT user_id, TIMESTAMPDIFF(SECOND, sent_at, NOW()) as age FROM group_messages WHERE id = %s AND is_deleted = 0"
+                                # --- FIN DE LA MODIFICACIÓN ---
                                 cursor.execute(query, (message_id_to_delete,))
                                 message_record = cursor.fetchone()
 
                                 if not message_record:
-                                    # El mensaje no existe o ya fue borrado
                                     continue
 
                                 if message_record['user_id'] != user_id:
-                                    # El usuario no es el autor
                                     continue
                                 
-                                # Verificamos el tiempo
-                                sent_at_utc = message_record['sent_at'].replace(tzinfo=timezone.utc)
-                                now_utc = datetime.now(timezone.utc)
-                                time_diff_seconds = (now_utc - sent_at_utc).total_seconds()
-
-                                if time_diff_seconds > 600: # 10 minutos
-                                    # El tiempo para eliminar ha expirado
+                                # --- INICIO DE LA MODIFICACIÓN ---
+                                # Se verifica la edad del mensaje calculada por la base de datos.
+                                # El límite son 600 segundos (10 minutos).
+                                if message_record['age'] > 600:
                                     continue
+                                # --- FIN DE LA MODIFICACIÓN ---
 
-                                # Si todas las validaciones pasan, procedemos a eliminar
                                 update_query = "UPDATE group_messages SET is_deleted = 1, deleted_at = NOW(), message_text = 'Mensaje eliminado' WHERE id = %s"
                                 cursor.execute(update_query, (message_id_to_delete,))
                                 connection.commit()
                                 
-                                # Notificamos a todos en el grupo que el mensaje fue eliminado
                                 await broadcast_message(group_uuid, {
                                     "type": "message_deleted",
                                     "message_id": message_id_to_delete
@@ -314,7 +303,6 @@ async def chat_handler(websocket):
                             finally:
                                 cursor.close()
                                 connection.close()
-                # --- FIN DE LA MODIFICACIÓN ---
         else:
             await websocket.close(reason="Se requiere mensaje de autenticación inicial.")
 

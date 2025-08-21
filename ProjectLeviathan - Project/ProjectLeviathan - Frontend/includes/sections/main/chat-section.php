@@ -3,8 +3,11 @@
 
         <div class="chat-content-area">
             <div class="chat-messages-wrapper" id="chat-messages-wrapper">
+                <div class="chat-loader-container" id="chat-loader-container" style="display: none;">
+                    <div class="loader"></div>
+                </div>
                 <div class="chat-messages-container" id="chat-messages-container">
-                    </div>
+                </div>
             </div>
             <div class="chat-input-container">
                 <div class="reply-preview-container disabled" id="reply-preview-container">
@@ -26,15 +29,6 @@
                     </button>
                 </form>
             </div>
-        </div>
-
-        <div class="chat-members-sidebar">
-            <div class="sidebar-header">
-                <h3 id="sidebar-group-title"></h3>
-                <span id="sidebar-online-count"></span>
-            </div>
-            <div class="sidebar-content" id="chat-members-list">
-                </div>
         </div>
 
         <div class="module-content module-options body-title disabled" id="message-options-template">
@@ -61,5 +55,5 @@
                 </div>
             </div>
         </div>
-        </div>
+    </div>
 </div>

@@ -7,20 +7,20 @@ $prefs = $_SESSION['user_preferences'] ?? [];
 // --- FIN DE LA MODIFICACIÓN ---
 ?>
 <div class="section-content overflow-y <?php echo $CURRENT_SUBSECTION === 'profile' ? 'active' : 'disabled'; ?>" data-section="sectionProfile">
-    <div class="settings-container">
-        <div class="profile-card">
-            <div class="profile-header-container">
-                <div class="profile-header">
+    <div class="content-container">
+        <div class="card">
+            <div class="card-header-container">
+                <div class="card-header">
                     <h2>Tu perfil</h2>
                     <p>Administra tu nombre, correo y otros datos de tu cuenta.</p>
                 </div>
             </div>
         </div>
 
-        <div class="profile-card">
-            <div class="profile-card-item">
-                <div class="profile-card-content">
-                    <div class="profile-card-info allow-wrap">
+        <div class="card">
+            <div class="card-item">
+                <div class="card-content">
+                    <div class="card-info allow-wrap">
                         <strong>Emblema</strong>
                         <span>Este es el emblema que representa tu rango en la plataforma.</span>
                     </div>
@@ -36,11 +36,11 @@ $prefs = $_SESSION['user_preferences'] ?? [];
             </div>
         </div>
 
-        <div class="profile-card">
-            <div class="profile-card-item with-divider" data-section="name">
+        <div class="card">
+            <div class="card-item with-divider" data-section="name">
                 <div class="view-state">
-                    <div class="profile-card-content">
-                        <div class="profile-card-info">
+                    <div class="card-content">
+                        <div class="card-info">
                             <strong>Nombre de usuario</strong>
                             <span><?php echo htmlspecialchars($_SESSION['username'] ?? 'No disponible'); ?></span>
                         </div>
@@ -48,7 +48,7 @@ $prefs = $_SESSION['user_preferences'] ?? [];
                     <button class="edit-button" data-action="toggleEditState">Editar</button>
                 </div>
                 <div class="edit-state hidden">
-                    <div class="profile-card-info">
+                    <div class="card-info">
                         <strong>Nombre de usuario</strong>
                         <div class="edit-input-group">
                             <input type="text" class="edit-input" value="<?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?>" maxlength="25">
@@ -61,10 +61,10 @@ $prefs = $_SESSION['user_preferences'] ?? [];
                     </div>
                 </div>
             </div>
-            <div class="profile-card-item with-divider" data-section="email">
+            <div class="card-item with-divider" data-section="email">
                 <div class="view-state">
-                    <div class="profile-card-content">
-                        <div class="profile-card-info">
+                    <div class="card-content">
+                        <div class="card-info">
                             <strong>Correo electrónico</strong>
                             <span><?php echo htmlspecialchars($_SESSION['email'] ?? 'No disponible'); ?></span>
                         </div>
@@ -72,7 +72,7 @@ $prefs = $_SESSION['user_preferences'] ?? [];
                     <button class="edit-button" data-action="toggleEditState">Editar</button>
                 </div>
                 <div class="edit-state hidden">
-                     <div class="profile-card-info">
+                     <div class="card-info">
                         <strong>Correo electrónico</strong>
                         <div class="edit-input-group">
                             <input type="email" class="edit-input" value="<?php echo htmlspecialchars($_SESSION['email'] ?? ''); ?>" maxlength="126">
@@ -85,10 +85,10 @@ $prefs = $_SESSION['user_preferences'] ?? [];
                     </div>
                 </div>
             </div>
-            <div class="profile-card-item" data-section="phone">
+            <div class="card-item" data-section="phone">
                 <div class="view-state">
-                    <div class="profile-card-content">
-                        <div class="profile-card-info">
+                    <div class="card-content">
+                        <div class="card-info">
                             <strong>Número de teléfono</strong>
                             <span><?php echo htmlspecialchars($_SESSION['phone_number'] ?? 'No disponible'); ?></span>
                         </div>
@@ -97,13 +97,13 @@ $prefs = $_SESSION['user_preferences'] ?? [];
             </div>
         </div>
         
-        <div class="profile-card">
-            <div class="profile-card-item-column" data-preference-field="language">
-                <div class="profile-card-info allow-wrap">
+        <div class="card">
+            <div class="card-item-column" data-preference-field="language">
+                <div class="card-info allow-wrap">
                     <strong>Idioma</strong>
                     <span>Elige tu idioma de preferencia para la interfaz.</span>
                 </div>
-                <div class="profile-control-group">
+                <div class="control-group">
                     <div class="selector-input" data-action="toggleSelector">
                         <div class="selected-value">
                             <div class="selected-value-icon left">
@@ -135,12 +135,12 @@ $prefs = $_SESSION['user_preferences'] ?? [];
             </div>
         </div>
         
-        <div class="profile-card">
-            <div class="profile-card-item-column" data-preference-field="usage_type">
-                <div class="profile-card-info allow-wrap">
+        <div class="card">
+            <div class="card-item-column" data-preference-field="usage_type">
+                <div class="card-info allow-wrap">
                     <strong>¿Para qué usarás esta web?</strong>
                 </div>
-                <div class="profile-control-group">
+                <div class="control-group">
                     <div class="selector-input" data-action="toggleSelector">
                         <div class="selected-value">
                             <div class="selected-value-icon left">
@@ -174,7 +174,7 @@ $prefs = $_SESSION['user_preferences'] ?? [];
                     </div>
                 </div>
                 
-                <div class="profile-control-group">
+                <div class="control-group">
                     <div class="info-box">
                         <p>Estamos personalizando tu experiencia para que se adapte mejor a tus necesidades. Puedes cambiar esta configuración en cualquier momento.</p>
                     </div>
@@ -182,10 +182,10 @@ $prefs = $_SESSION['user_preferences'] ?? [];
             </div>
         </div>
         
-        <div class="profile-card">
-            <div class="profile-card-item with-divider toggle-item" data-preference-field="open_links_in_new_tab">
-                <div class="profile-card-content">
-                    <div class="profile-card-info allow-wrap">
+        <div class="card">
+            <div class="card-item with-divider toggle-item" data-preference-field="open_links_in_new_tab">
+                <div class="card-content">
+                    <div class="card-info allow-wrap">
                         <strong>Abrir los enlaces en una pestaña nueva</strong>
                         <span>En el navegador web, los enlaces siempre se abrirán en una pestaña nueva.</span>
                     </div>
@@ -196,9 +196,9 @@ $prefs = $_SESSION['user_preferences'] ?? [];
                     <span class="material-symbols-rounded">done</span>
                 </label>
             </div>
-            <div class="profile-card-item toggle-item" data-preference-field="show_sensitive_content">
-                <div class="profile-card-content">
-                    <div class="profile-card-info allow-wrap">
+            <div class="card-item toggle-item" data-preference-field="show_sensitive_content">
+                <div class="card-content">
+                    <div class="card-info allow-wrap">
                         <strong>Mostrar contenido sensible</strong>
                         <span>Permite la visualización de contenido que puede incluir lenguaje fuerte o temas para un público maduro.</span>
                     </div>

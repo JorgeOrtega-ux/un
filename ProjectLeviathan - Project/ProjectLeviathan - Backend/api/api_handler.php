@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('America/Chicago');
 session_start();
 header('Content-Type: application/json');
 
@@ -27,7 +28,7 @@ $request_data = [];
 $validation_rules = [
     'get_group_members' => ['group_uuid' => 'required|uuid'],
     'get_group_details' => ['group_uuid' => 'required|uuid'],
-    'get_chat_messages' => ['group_uuid' => 'required|uuid'],
+    'get_chat_messages' => ['group_uuid' => 'required|uuid', 'offset' => 'integer'],
     'get_university_groups' => ['municipality_id' => 'required|string'],
     'get_municipality_groups' => [],
     'toggle_group_membership' => [
@@ -58,9 +59,7 @@ $validation_rules = [
     'get_municipalities' => [],
     'get_account_dates' => [],
     'report_message' => ['message_id' => 'required|integer'],
-    // --- INICIO DE LA MODIFICACIÓN ---
     'delete_message' => ['message_id' => 'required|integer']
-    // --- FIN DE LA MODIFICACIÓN ---
 ];
 
 if (!array_key_exists($action, $validation_rules)) {
@@ -86,9 +85,11 @@ foreach ($rules as $param => $rule) {
         if ($part === 'uuid' && !preg_match('/^[a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}$/i', $value)) {
             $valid = false; $message = "El formato del UUID para '{$param}' no es válido."; break;
         }
-        if ($part === 'integer' && !filter_var($value, FILTER_VALIDATE_INT)) {
+        // --- INICIO DE LA CORRECCIÓN ---
+        if ($part === 'integer' && filter_var($value, FILTER_VALIDATE_INT) === false) {
             $valid = false; $message = "El campo '{$param}' debe ser un número entero."; break;
         }
+        // --- FIN DE LA CORRECCIÓN ---
         if (strpos($part, 'enum:') === 0) {
             $options = explode(',', substr($part, 5));
             if (!in_array($value, $options)) {
@@ -242,6 +243,9 @@ if ($action === 'get_user_groups') {
 // ACCIÓN: OBTENER MENSAJES DE UN GRUPO
 if ($action === 'get_chat_messages') {
     $groupUuid = $request_data['group_uuid'];
+    $offset = $request_data['offset'] ?? 0;
+    $limit = 50;
+
     if (empty($userId)) {
         send_json_response(false, 'Faltan datos para cargar el chat.');
     }
@@ -252,7 +256,6 @@ if ($action === 'get_chat_messages') {
             send_json_response(false, 'No perteneces a este grupo.');
         }
 
-        // --- INICIO DE LA MODIFICACIÓN ---
         $stmt_messages = $pdo->prepare(
             "SELECT
                 gm.id as message_id, gm.user_id, u.username,
@@ -264,19 +267,25 @@ if ($action === 'get_chat_messages') {
              LEFT JOIN group_messages replied_msg ON gm.reply_to_message_id = replied_msg.id
              LEFT JOIN users replied_user ON replied_msg.user_id = replied_user.id
              WHERE gm.group_uuid = :group_uuid
-             ORDER BY gm.sent_at ASC"
+             ORDER BY gm.sent_at DESC
+             LIMIT :limit OFFSET :offset"
         );
-        $stmt_messages->execute(['group_uuid' => $groupUuid]);
+        $stmt_messages->bindValue(':group_uuid', $groupUuid, PDO::PARAM_STR);
+        $stmt_messages->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt_messages->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt_messages->execute();
         $messages_raw = $stmt_messages->fetchAll(PDO::FETCH_ASSOC);
         $messages = [];
 
         foreach ($messages_raw as $msg) {
+            $dt = new DateTime($msg['timestamp']);
+
             $message_item = [
                 'message_id' => $msg['message_id'],
                 'user_id' => $msg['user_id'],
                 'username' => $msg['username'],
                 'message' => $msg['is_deleted'] ? 'Mensaje eliminado' : $msg['message'],
-                'timestamp' => date('c', strtotime($msg['timestamp'])),
+                'timestamp' => $dt->format('c'),
                 'is_deleted' => (bool)$msg['is_deleted'],
                 'reply_context' => null
             ];
@@ -289,9 +298,8 @@ if ($action === 'get_chat_messages') {
             }
             $messages[] = $message_item;
         }
-        // --- FIN DE LA MODIFICACIÓN ---
 
-        send_json_response(true, 'Mensajes obtenidos.', ['messages' => $messages]);
+        send_json_response(true, 'Mensajes obtenidos.', ['messages' => array_reverse($messages)]);
 
     } catch (PDOException $e) {
         error_log("API Error (get_chat_messages): " . $e->getMessage());
@@ -343,7 +351,7 @@ if ($action === 'report_message') {
     }
 }
 
-// --- INICIO DE LA MODIFICACIÓN: ACCIÓN PARA ELIMINAR MENSAJE ---
+// ACCIÓN PARA ELIMINAR MENSAJE
 if ($action === 'delete_message') {
     if (empty($userId)) {
         send_json_response(false, 'Debes iniciar sesión para eliminar un mensaje.');
@@ -379,8 +387,6 @@ if ($action === 'delete_message') {
         send_json_response(false, 'Error del servidor al eliminar el mensaje.');
     }
 }
-// --- FIN DE LA MODIFICACIÓN ---
-
 
 // ACCIÓN: OBTENER TODOS LOS MUNICIPIOS
 if ($action === 'get_municipalities') {

@@ -100,4 +100,22 @@
             <button class="save-button danger-button" data-action="confirmReport">Reportar</button>
         </div>
     </div>
+
+    <div class="menu-content dialog-pane disabled" data-dialog="confirmDeleteMessage">
+        <div class="dialog-header">
+            <div class="dialog-icon-background danger"><span class="material-symbols-rounded">delete_forever</span></div>
+            <h2>¿Eliminar este mensaje?</h2>
+            <p>Esta acción no se puede deshacer. El mensaje se eliminará para todos.</p>
+        </div>
+        <div class="dialog-body">
+            <div class="reported-message-container">
+                <p class="reported-message-text" id="message-to-delete-text"></p>
+            </div>
+            <input type="hidden" name="message_id_to_delete" value="">
+        </div>
+        <div class="dialog-actions">
+            <button class="cancel-button" data-action="closeAccountActionModal">Cancelar</button>
+            <button class="save-button danger-button" data-action="confirmDeleteMessageAction">Sí, eliminar</button>
+        </div>
+    </div>
 </div>

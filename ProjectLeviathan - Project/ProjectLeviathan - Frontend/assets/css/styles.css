@@ -1093,6 +1093,21 @@ body {
 
 /* --- INICIO DE LA MODIFICACIÓN: ESTILOS DE CHAT COMPLETAMENTE REDISEÑADOS --- */
 
+/* --- INICIO DE LA MODIFICACIÓN: Estilos para el separador de fecha --- */
+.chat-date-separator {
+    text-align: center;
+    margin: 16px 0;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    background-color: var(--bg-secondary);
+    padding: 4px 12px;
+    border-radius: var(--border-radius-pill);
+    display: inline-block;
+    align-self: center;
+}
+/* --- FIN DE LA MODIFICACIÓN --- */
+
 .chat-section-container {
     position: relative;
     height: 100%;
@@ -1125,9 +1140,8 @@ body {
     overflow-y: auto;
     padding: 24px;
     display: flex;
-    flex-direction: column-reverse;
+    flex-direction: column; /* Cambiado de column-reverse a column */
 }
-
 .chat-messages-container {
     display: flex;
     flex-direction: column;
@@ -1325,10 +1339,10 @@ body {
 .chat-input-field {
     flex-grow: 1;
     height: 44px;
-    padding: 0 56px 0 56px;
+    padding: 0 42px 0 42px;
     border-radius: var(--border-radius-pill);
     border: var(--border-standard);
-    background-color: var(--bg-secondary);
+    background-color: transparent;
     font-size: 1rem;
     outline: none;
     transition: border-color 0.2s;
@@ -1357,7 +1371,7 @@ body {
 }
 
 .chat-attach-button:hover {
-    background-color: var(--border-color-light);
+    background-color: #f5f5fa;
 }
 
 .chat-send-button {
@@ -1380,49 +1394,6 @@ body {
 
 .chat-send-button:hover {
     opacity: 0.8;
-}
-
-.chat-members-sidebar {
-    position: absolute;
-    top: 24px;
-    right: 24px;
-    width: 280px;
-    height: calc(100% - 48px);
-    display: flex;
-    flex-direction: column;
-    background-color: var(--bg-primary);
-    border: 1px solid var(--color-transparent);
-    border-radius: var(--border-radius-large);
-    box-shadow: var(--shadow-standard);
-    z-index: 10;
-}
-
-.sidebar-header {
-    padding: 16px;
-    border-bottom: var(--border-standard);
-    flex-shrink: 0;
-}
-
-.sidebar-header h3 {
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin: 0 0 4px 0;
-    color: var(--color-text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-#sidebar-online-count {
-    font-size: 0.85rem;
-    color: var(--color-text-muted);
-    font-weight: 400;
-}
-
-.sidebar-content {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding: 8px;
 }
 
 .member-role-header {
@@ -1466,13 +1437,13 @@ body {
     text-overflow: ellipsis;
 }
 
-@media (max-width: 1200px) {
-    .chat-members-sidebar {
-        display: none;
-    }
+.menu-link-separator {
+    height: 1px;
+    background-color: var(--border-color-light);
+    margin: 8px 0;
 }
-/* --- FIN DE LA MODIFICACIÓN --- *//* ... al final de tu archivo ... */
 
+/* --- FIN DE LA MODIFICACIÓN --- */
 .message-bubble.deleted-message {
     cursor: default;
     background-color: transparent !important;

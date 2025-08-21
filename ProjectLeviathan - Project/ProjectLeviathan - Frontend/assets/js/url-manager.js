@@ -8,8 +8,8 @@ function initUrlManager() {
         'explore-municipalities': 'explore/municipalities',
         'explore-universities': 'explore/universities',
         // --- INICIO DE LA MODIFICACIÓN ---
-        // Se añade una clave base para el chat
-        'chat': 'chat',
+        'chat-messages': 'chat',
+        'chat-members': 'chat/members',
         // --- FIN DE LA MODIFICACIÓN ---
         'settings-profile': 'settings/your-account',
         'settings-login': 'settings/login',
@@ -26,8 +26,9 @@ function generateUrl(section, subsection = null) {
     
     // --- INICIO DE LA MODIFICACIÓN ---
     // Lógica para manejar URLs dinámicas como /chat/:id
-    if (section === 'chat' && subsection && typeof subsection === 'object' && subsection.uuid) {
-        const path = urlMap['chat'];
+    if (section === 'chat' && typeof subsection === 'object' && subsection.uuid) {
+        const key = `chat-${subsection.type || 'messages'}`;
+        const path = urlMap[key];
         return `${urlManagerConfig.baseUrl}/${path}/${subsection.uuid}`;
     }
     // --- FIN DE LA MODIFICACIÓN ---
@@ -50,7 +51,7 @@ function navigateToUrl(section, subsection = null, updateHistory = true) {
     if (updateHistory && window.location.href !== url) {
         history.pushState({
             section: section,
-            subsection: subsection // subsection ahora puede ser un objeto {uuid, title}
+            subsection: subsection
         }, '', url);
     }
 
@@ -78,7 +79,6 @@ function getCurrentUrlState() {
     const section = urlManagerConfig.currentSection;
     const subsection = urlManagerConfig.currentSubsection;
     // --- INICIO DE LA MODIFICACIÓN ---
-    // Añadimos el ID para el estado inicial
     const id = urlManagerConfig.currentId;
     // --- FIN DE LA MODIFICACIÓN ---
     
@@ -103,9 +103,13 @@ function setupPopStateHandler(callback) {
         } else {
             const initialState = getCurrentUrlState();
             // --- INICIO DE LA MODIFICACIÓN ---
-            // Si la URL es de chat, pasamos el UUID al callback
             if (initialState.isChatSection && initialState.id) {
-                callback(initialState.section, { uuid: initialState.id, title: 'Cargando...' }, false);
+                 const subsectionObject = {
+                    uuid: initialState.id,
+                    type: initialState.subsection,
+                    title: 'Cargando...'
+                };
+                callback(initialState.section, subsectionObject, false);
             } else {
                 callback(initialState.section, initialState.subsection, false);
             }
@@ -121,10 +125,13 @@ function setInitialHistoryState() {
     
     if (!history.state && currentState) {
         // --- INICIO DE LA MODIFICACIÓN ---
-        // Preparamos el estado inicial para el chat si es necesario
         let subsectionForState = currentState.subsection;
         if (currentState.isChatSection && currentState.id) {
-            subsectionForState = { uuid: currentState.id, title: 'Cargando...' };
+            subsectionForState = {
+                uuid: currentState.id,
+                type: currentState.subsection,
+                title: 'Cargando...'
+            };
         }
         // --- FIN DE LA MODIFICACIÓN ---
 

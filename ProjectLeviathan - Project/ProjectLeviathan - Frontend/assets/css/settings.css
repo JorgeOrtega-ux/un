@@ -1,4 +1,4 @@
-.settings-container {
+.content-container {
     max-width: 600px;
     width: 100%;
     flex: 1 1 auto;
@@ -7,36 +7,36 @@
     height: max-content;
 }
 
-.profile-header h2 {
+.card-header h2 {
     font-size: 24px;
     font-weight: 700;
     margin-bottom: 4px;
     color: var(--color-text-secondary);
 }
 
-.profile-header p {
+.card-header p {
     font-size: 16px;
     color: var(--color-text-muted);
     margin: 0;
 }
 
-.profile-card {
+.card {
     border: var(--border-standard);
     border-radius: var(--border-radius-large);
     margin-bottom: 16px;
     background-color: var(--bg-primary);
 }
 
-.settings-container .profile-card:last-child {
+.content-container .card:last-child {
     margin-bottom: 0;
 }
 
-.profile-header-container {
+.card-header-container {
     padding: 24px;
     text-align: center;
 }
 
-.profile-card-item {
+.card-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -45,15 +45,20 @@
     position: relative;
 }
 
-.profile-card-item-column {
+.card-item-column {
     padding: 20px;
 }
 
-.profile-card-item.with-divider {
+.card-item.with-divider {
     border-bottom: var(--border-standard);
 }
 
-.profile-card-content {
+/* Evita que el último elemento tenga un borde */
+.card .card-item:last-child.with-divider {
+    border-bottom: none;
+}
+
+.card-content {
     display: flex;
     align-items: center;
     flex: 1;
@@ -77,7 +82,7 @@
     color: var(--ui-color-icon-primary);
 }
 
-.profile-card-info {
+.card-info {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
@@ -85,14 +90,14 @@
     min-width: 0;
 }
 
-.profile-card-info strong {
+.card-info strong {
     font-size: 1rem;
     font-weight: 500;
     color: var(--color-text-secondary);
     margin-bottom: 2px;
 }
 
-.profile-card-info span {
+.card-info span {
     font-size: 0.9rem;
     color: var(--color-text-muted);
     font-weight: 400;
@@ -102,7 +107,7 @@
     display: block;
 }
 
-.profile-card-info.allow-wrap span {
+.card-info.allow-wrap span {
     white-space: normal;
     overflow: visible;
     text-overflow: initial;
@@ -147,28 +152,28 @@
     display: none !important;
 }
 
-.profile-card-item .view-state {
+.card-item .view-state {
     width: 100%;
     display: flex;
     align-items: center;
     justify-content: space-between;
 }
 
-.profile-card-item.column-layout .view-state {
+.card-item.column-layout .view-state {
     flex-direction: column;
     align-items: flex-start;
 }
 
-.profile-card-item.column-layout .profile-card-content {
+.card-item.column-layout .card-content {
     margin-bottom: 12px;
 }
 
-.profile-card-item.column-layout .edit-button {
+.card-item.column-layout .edit-button {
     margin-left: 0;
     align-self: flex-end;
 }
 
-.profile-card-item .edit-state {
+.card-item .edit-state {
     width: 100%;
 }
 
@@ -240,7 +245,7 @@
 }
 
 /* --- Selectores y Entradas de Control --- */
-.profile-control-group {
+.control-group {
     width: 100%;
     max-width: 285px;
     margin-top: 8px;
@@ -396,8 +401,8 @@ input:checked ~ .material-symbols-rounded {
 }
 
 @media (max-width: 468px) {
-    .profile-card-item,
-    .profile-card-item.toggle-item {
+    .card-item,
+    .card-item.toggle-item {
         flex-direction: column;
         align-items: flex-start;
         gap: 12px;
@@ -423,7 +428,22 @@ input:checked ~ .material-symbols-rounded {
         justify-content: flex-end;
     }
 
-    .toggle-item .profile-card-content {
+    .toggle-item .card-content {
         margin-bottom: 12px;
     }
+}
+
+.member-list-item {
+    min-height: 50px;
+    height: 50px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.member-list-header {
+    min-height: 50px;
+    height: 50px;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
 }

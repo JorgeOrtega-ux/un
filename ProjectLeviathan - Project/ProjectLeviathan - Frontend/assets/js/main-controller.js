@@ -13,6 +13,12 @@ function initMainController() {
     let messageOptionsPopper = null;
     let currentReplyMessageId = null;
 
+    let currentMessagesOffset = 0;
+    let isLoadingMessages = false;
+    let hasMoreMessages = true;
+    
+    let chatScrollHandler = null; 
+
     const popperInstances = {};
 
     initUrlManager();
@@ -34,6 +40,8 @@ function initMainController() {
     let isSectionTermsActive = initialState ? initialState.subsection === 'terms' : false;
     let isSectionCookiesActive = initialState ? initialState.subsection === 'cookies' : false;
     let isSectionSuggestionsActive = initialState ? initialState.subsection === 'suggestions' : false;
+    let isChatMessagesActive = initialState ? initialState.subsection === 'messages' : false;
+    let isChatMembersActive = initialState ? initialState.subsection === 'members' : false;
 
     const toggleOptionsButton = document.querySelector('[data-action="toggleModuleOptions"]');
     const moduleOptions = document.querySelector('[data-module="moduleOptions"]');
@@ -49,6 +57,7 @@ function initMainController() {
     const sectionHome = document.querySelector('[data-section="sectionHome"]');
     const sectionExplore = document.querySelector('[data-section="sectionExplore"]');
     const sectionChat = document.querySelector('[data-section="sectionChat"]');
+    const sectionChatMembers = document.querySelector('[data-section="sectionChatMembers"]');
     const sectionSettings = document.querySelector('[data-section="sectionSettings"]');
     const sectionHelp = document.querySelector('[data-section="sectionHelp"]');
     const sectionProfile = document.querySelector('[data-section="sectionProfile"]');
@@ -72,6 +81,8 @@ function initMainController() {
     const toggleSectionTermsButton = document.querySelector('[data-action="toggleSectionTerms"]');
     const toggleSectionCookiesButton = document.querySelector('[data-action="toggleSectionCookies"]');
     const toggleSectionSuggestionsButton = document.querySelector('[data-action="toggleSectionSuggestions"]');
+    const toggleChatMessagesButton = document.querySelector('[data-action="toggleChatMessages"]');
+    const toggleChatMembersButton = document.querySelector('[data-action="toggleChatMembers"]');
 
     const accountActionModal = document.querySelector('[data-module="accountActionModal"]');
     const updatePasswordDialog = accountActionModal?.querySelector('[data-dialog="updatePassword"]');
@@ -126,9 +137,11 @@ function initMainController() {
             '      ': { section: 'Help', status: toState(isSectionHelpActive) },
             '── Sub-sections (Explore) ──': { section: 'Municipalities', status: toState(isSectionMunicipalitiesActive) },
             '       ': { section: 'Universities', status: toState(isSectionUniversitiesActive) },
+            '── Sub-sections (Chat) ──': { section: 'Messages', status: toState(isChatMessagesActive) },
+            '        ': { section: 'Members', status: toState(isChatMembersActive) },
             '── Sub-sections (Settings) ──': { section: 'Profile', status: toState(isSectionProfileActive) },
-            '        ': { section: 'Login', status: toState(isSectionLoginActive) },
-            '         ': { section: 'Accessibility', status: toState(isSectionAccessibilityActive) },
+            '         ': { section: 'Login', status: toState(isSectionLoginActive) },
+            '          ': { section: 'Accessibility', status: toState(isSectionAccessibilityActive) },
             '── Sub-sections (Help) ──': { section: 'Privacy Policy', status: toState(isSectionPrivacyActive) },
             '           ': { section: 'Terms & Conditions', status: toState(isSectionTermsActive) },
             '            ': { section: 'Cookies Policy', status: toState(isSectionCookiesActive) },
@@ -161,6 +174,7 @@ function initMainController() {
         let targetDialog;
 
         const reportMessageDialog = accountActionModal?.querySelector('[data-dialog="reportMessage"]');
+        const confirmDeleteMessageDialog = accountActionModal?.querySelector('[data-dialog="confirmDeleteMessage"]');
 
         if (dialogType === 'updatePassword') {
             resetPasswordModal();
@@ -170,6 +184,8 @@ function initMainController() {
             targetDialog = deleteAccountDialog;
         } else if (dialogType === 'reportMessage') {
             targetDialog = reportMessageDialog;
+        } else if (dialogType === 'confirmDeleteMessage') {
+            targetDialog = confirmDeleteMessageDialog;
         } else {
             return;
         }
@@ -404,7 +420,7 @@ function initMainController() {
         if (messageOptionsPopper) {
             closeMessageOptions();
         }
-        
+
         if (messageElement.classList.contains('deleted-message')) {
             return;
         }
@@ -424,7 +440,6 @@ function initMainController() {
             reportButton.style.display = isCurrentUser ? 'none' : 'flex';
         }
 
-        // --- INICIO DE LA MODIFICACIÓN ---
         const deleteButton = dropdown.querySelector('[data-action="delete-message"]');
         if (deleteButton) {
             const messageTimestamp = messageElement.dataset.timestamp;
@@ -433,7 +448,6 @@ function initMainController() {
             const canDelete = isCurrentUser && (now - sentDate) < 10 * 60 * 1000; // 10 minutos
             deleteButton.style.display = canDelete ? 'flex' : 'none';
         }
-        // --- FIN DE LA MODIFICACIÓN ---
 
         document.body.appendChild(dropdown);
 
@@ -492,6 +506,13 @@ function initMainController() {
         });
     };
 
+    const updateChatMenuButtons = (activeAction) => {
+        const chatMenuLinks = surfaceChat.querySelectorAll('.menu-link');
+        chatMenuLinks.forEach(link => {
+            link.classList.toggle('active', link.dataset.action === activeAction);
+        });
+    };
+
     const setSectionActive = (sectionToShow, sectionsToHide, activeStateSetter, updateUrl = true) => {
         sectionToShow.classList.remove('disabled');
         sectionToShow.classList.add('active');
@@ -514,6 +535,9 @@ function initMainController() {
         }
         if (activeStateSetter !== 'explore') {
             isSectionMunicipalitiesActive = false; isSectionUniversitiesActive = false;
+        }
+        if (activeStateSetter !== 'chat') {
+            isChatMessagesActive = false; isChatMembersActive = false;
         }
 
         const surfaces = {
@@ -561,6 +585,8 @@ function initMainController() {
 
         isSectionMunicipalitiesActive = activeStateSetter === 'municipalities';
         isSectionUniversitiesActive = activeStateSetter === 'universities';
+        isChatMessagesActive = activeStateSetter === 'messages';
+        isChatMembersActive = activeStateSetter === 'members';
         isSectionProfileActive = activeStateSetter === 'profile';
         isSectionLoginActive = activeStateSetter === 'login';
         isSectionAccessibilityActive = activeStateSetter === 'accessibility';
@@ -570,18 +596,26 @@ function initMainController() {
         isSectionSuggestionsActive = activeStateSetter === 'suggestions';
 
         if (updateUrl) {
-            const mainSection = isSectionExploreActive ? 'explore' : isSectionSettingsActive ? 'settings' : 'help';
-            navigateToUrl(mainSection, activeStateSetter);
+            const mainSection = isSectionExploreActive ? 'explore' : isSectionChatActive ? 'chat' : isSectionSettingsActive ? 'settings' : 'help';
+            let subsectionParam = activeStateSetter;
+            if (mainSection === 'chat') {
+                subsectionParam = {
+                    uuid: activeChatGroup.uuid,
+                    type: activeStateSetter,
+                    title: activeChatGroup.title
+                };
+            }
+            navigateToUrl(mainSection, subsectionParam);
         }
     };
 
     const resetUIComponents = () => {
         closeAllModules();
 
-        document.querySelectorAll('.profile-card-item .edit-state').forEach(editState => {
+        document.querySelectorAll('.card-item .edit-state').forEach(editState => {
             if (!editState.classList.contains('hidden')) {
                 editState.classList.add('hidden');
-                const parent = editState.closest('.profile-card-item');
+                const parent = editState.closest('.card-item');
                 if (parent) {
                     const viewState = parent.querySelector('.view-state');
                     if (viewState && viewState.classList.contains('hidden')) {
@@ -625,6 +659,26 @@ function initMainController() {
         } catch (e) {
             console.error("Invalid timestamp format:", isoTimestamp);
             return '';
+        }
+    };
+    
+    const formatDateSeparator = (isoTimestamp) => {
+        const date = new Date(isoTimestamp);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        if (date.toDateString() === today.toDateString()) {
+            return 'Hoy';
+        } else if (date.toDateString() === yesterday.toDateString()) {
+            return 'Ayer';
+        } else {
+            return date.toLocaleDateString('es-ES', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
         }
     };
 
@@ -674,18 +728,17 @@ function initMainController() {
                 if (data.type === 'user_status_update') {
                     updateMembersList(data.online_users);
                 }
-                // --- INICIO DE LA MODIFICACIÓN ---
                 if (data.type === 'message_deleted') {
                     const messageBubble = document.querySelector(`[data-message-id="${data.message_id}"]`);
                     if (messageBubble) {
                         messageBubble.classList.add('deleted-message');
-                        const content = messageBubble.querySelector('.message-content');
-                        if (content) {
-                            content.innerHTML = `<p><em>Mensaje eliminado</em></p>`;
-                        }
+                        messageBubble.innerHTML = `
+                            <div class="message-content">
+                                <p><em>Mensaje eliminado</em></p>
+                            </div>
+                        `;
                     }
                 }
-                // --- FIN DE LA MODIFICACIÓN ---
             };
 
             websocket.onclose = () => {
@@ -703,10 +756,23 @@ function initMainController() {
             alert('Error de conexión con el chat.');
         }
     };
-
+    
+    // --- INICIO DE LA MODIFICACIÓN ---
     const appendMessage = (data) => {
         const messagesContainer = document.getElementById('chat-messages-container');
         if (!messagesContainer) return;
+    
+        const messageDate = new Date(data.timestamp).toDateString();
+    
+        const lastBubble = messagesContainer.querySelector('.message-bubble:last-child');
+        const lastBubbleDate = lastBubble ? new Date(lastBubble.dataset.timestamp).toDateString() : null;
+    
+        if (!lastBubble || messageDate !== lastBubbleDate) {
+            const dateSeparator = document.createElement('div');
+            dateSeparator.className = 'chat-date-separator';
+            dateSeparator.innerHTML = `<span>${formatDateSeparator(data.timestamp)}</span>`;
+            messagesContainer.appendChild(dateSeparator);
+        }
     
         const isSentByCurrentUser = data.user_id === window.PROJECT_CONFIG.userId;
         const messageClass = isSentByCurrentUser ? 'sent' : 'received';
@@ -717,7 +783,7 @@ function initMainController() {
         messageBubble.className = `message-bubble ${messageClass}`;
         messageBubble.dataset.messageId = data.message_id;
         messageBubble.dataset.authorId = data.user_id;
-        messageBubble.dataset.timestamp = data.timestamp; // Guardamos el timestamp
+        messageBubble.dataset.timestamp = data.timestamp;
     
         let replyHTML = '';
         if (data.reply_context && !data.is_deleted) {
@@ -730,7 +796,6 @@ function initMainController() {
             `;
         }
     
-        // --- INICIO DE LA MODIFICACIÓN ---
         if (data.is_deleted) {
             messageBubble.classList.add('deleted-message');
             messageBubble.innerHTML = `
@@ -746,56 +811,110 @@ function initMainController() {
                     <span class="message-time">${time}</span>
                 </div>`;
         }
-        // --- FIN DE LA MODIFICACIÓN ---
     
         messagesContainer.appendChild(messageBubble);
         messagesContainer.parentElement.scrollTop = messagesContainer.parentElement.scrollHeight;
     };
+    // --- FIN DE LA MODIFICACIÓN ---
+    
+    const prependMessage = (data) => {
+        const messagesContainer = document.getElementById('chat-messages-container');
+        if (!messagesContainer) return;
+    
+        const isSentByCurrentUser = data.user_id === window.PROJECT_CONFIG.userId;
+        const messageClass = isSentByCurrentUser ? 'sent' : 'received';
+        const username = isSentByCurrentUser ? 'Tú' : data.username;
+        const time = formatMessageTime(data.timestamp);
+    
+        const messageBubble = document.createElement('div');
+        messageBubble.className = `message-bubble ${messageClass}`;
+        messageBubble.dataset.messageId = data.message_id;
+        messageBubble.dataset.authorId = data.user_id;
+        messageBubble.dataset.timestamp = data.timestamp;
+    
+        let replyHTML = '';
+        if (data.reply_context && !data.is_deleted) {
+            const replyAuthor = data.reply_context.username === window.PROJECT_CONFIG.username ? 'Tú' : data.reply_context.username;
+            replyHTML = `
+            <div class="reply-context">
+                <strong>${replyAuthor}</strong>
+                <p>${data.reply_context.message_text}</p>
+            </div>
+        `;
+        }
+    
+        if (data.is_deleted) {
+            messageBubble.classList.add('deleted-message');
+            messageBubble.innerHTML = `
+            <div class="message-content">
+                <p><em>${data.message}</em></p>
+            </div>`;
+        } else {
+            messageBubble.innerHTML = `
+            ${replyHTML}
+            <span class="message-info">${username}</span>
+            <div class="message-content">
+                <p>${data.message}</p>
+                <span class="message-time">${time}</span>
+            </div>`;
+        }
+    
+        messagesContainer.insertBefore(messageBubble, messagesContainer.firstChild);
+    };
 
     const loadChat = async (groupInfo) => {
-        const sidebarTitle = document.getElementById('sidebar-group-title');
         const messagesContainer = document.getElementById('chat-messages-container');
-        const membersListContainer = document.getElementById('chat-members-list');
-
+        const chatMessagesWrapper = document.getElementById('chat-messages-wrapper');
+    
+        currentMessagesOffset = 0;
+        isLoadingMessages = false;
+        hasMoreMessages = true;
+    
+        if (chatScrollHandler) {
+            chatMessagesWrapper.removeEventListener('scroll', chatScrollHandler);
+        }
+    
+        chatScrollHandler = () => {
+            if (chatMessagesWrapper.scrollTop === 0) {
+                loadMoreMessages(groupInfo.uuid);
+            }
+        };
+    
+        chatMessagesWrapper.addEventListener('scroll', chatScrollHandler);
+    
         if (!groupInfo || !groupInfo.uuid) {
             console.error("No se proporcionó información del grupo para cargar el chat.");
             handleNavigationChange('home');
             return;
         }
-
-        sidebarTitle.textContent = 'Cargando...';
+    
+        document.getElementById('chat-messages-menu-title').textContent = 'Cargando...';
+        document.getElementById('members-group-title').textContent = 'Cargando...';
         messagesContainer.innerHTML = '<div class="loader"></div>';
-        membersListContainer.innerHTML = '<div class="loader"></div>';
-
+    
         try {
             const [detailsResponse, membersResponse] = await Promise.all([
                 fetch(`${window.PROJECT_CONFIG.apiUrl}?action=get_group_details&group_uuid=${groupInfo.uuid}`),
                 fetch(`${window.PROJECT_CONFIG.apiUrl}?action=get_group_members&group_uuid=${groupInfo.uuid}`)
             ]);
-
+    
             const detailsData = await detailsResponse.json();
             const membersData = await membersResponse.json();
-
+    
             if (detailsData.success && membersData.success) {
                 const realTitle = detailsData.group.group_title;
-                sidebarTitle.textContent = realTitle;
-                activeChatGroup = { uuid: groupInfo.uuid, title: realTitle };
+                activeChatGroup = { uuid: groupInfo.uuid, title: realTitle, type: groupInfo.type || 'messages' };
                 updatePageTitle('chat', activeChatGroup);
-
+                document.getElementById('chat-messages-menu-title').textContent = realTitle;
+                document.getElementById('members-group-title').textContent = realTitle;
+    
                 allChatMembers = membersData.members;
-                updateMembersList([]);
-
-                const messagesResponse = await fetch(`${window.PROJECT_CONFIG.apiUrl}?action=get_chat_messages&group_uuid=${groupInfo.uuid}`);
-                const messagesData = await messagesResponse.json();
-
+                updateMembersList([], document.getElementById('chat-members-list-page'));
+    
                 messagesContainer.innerHTML = '';
-                if (messagesData.success && messagesData.messages.length > 0) {
-                    messagesData.messages.forEach(appendMessage);
-                } else {
-                    messagesContainer.innerHTML = `<p class="empty-grid-message">Sé el primero en enviar un mensaje.</p>`;
-                }
-
+                await loadMoreMessages(groupInfo.uuid);
                 connectWebSocket(groupInfo.uuid);
+    
             } else {
                 const errorMessage = detailsData.message || membersData.message || 'Ocurrió un error inesperado.';
                 alert(errorMessage);
@@ -807,20 +926,87 @@ function initMainController() {
             handleNavigationChange('home');
         }
     };
-
+    
+    // --- INICIO DE LA MODIFICACIÓN ---
+    const loadMoreMessages = async (groupUuid) => {
+        if (isLoadingMessages || !hasMoreMessages) return;
+        isLoadingMessages = true;
+    
+        const loaderContainer = document.getElementById('chat-loader-container');
+        const chatMessagesWrapper = document.getElementById('chat-messages-wrapper');
+        const messagesContainer = document.getElementById('chat-messages-container');
+        if (loaderContainer) loaderContainer.style.display = 'flex';
+    
+        try {
+            const response = await fetch(`${window.PROJECT_CONFIG.apiUrl}?action=get_chat_messages&group_uuid=${groupUuid}&offset=${currentMessagesOffset}`);
+            const data = await response.json();
+    
+            if (data.success && data.messages.length > 0) {
+                const oldScrollHeight = chatMessagesWrapper.scrollHeight;
+    
+                const firstVisibleBubble = messagesContainer.querySelector('.message-bubble:first-child');
+                let dateOfFirstVisibleMessage = firstVisibleBubble ? new Date(firstVisibleBubble.dataset.timestamp).toDateString() : null;
+    
+                for (let i = data.messages.length - 1; i >= 0; i--) {
+                    prependMessage(data.messages[i]);
+                }
+    
+                const newestMessageFromBatch = data.messages[data.messages.length - 1];
+                const dateOfNewestMessageInBatch = new Date(newestMessageFromBatch.timestamp).toDateString();
+    
+                if (dateOfFirstVisibleMessage && dateOfNewestMessageInBatch !== dateOfFirstVisibleMessage) {
+                    const separator = document.createElement('div');
+                    separator.className = 'chat-date-separator';
+                    separator.innerHTML = `<span>${formatDateSeparator(new Date(dateOfFirstVisibleMessage))}</span>`;
+                    messagesContainer.insertBefore(separator, firstVisibleBubble);
+                }
+    
+                if (currentMessagesOffset === 0) {
+                    let lastDate = null;
+                    messagesContainer.querySelectorAll('.message-bubble').forEach(bubble => {
+                        const messageDate = new Date(bubble.dataset.timestamp).toDateString();
+                        if(messageDate !== lastDate) {
+                            const separator = document.createElement('div');
+                            separator.className = 'chat-date-separator';
+                            separator.innerHTML = `<span>${formatDateSeparator(bubble.dataset.timestamp)}</span>`;
+                            messagesContainer.insertBefore(separator, bubble);
+                            lastDate = messageDate;
+                        }
+                    });
+                }
+    
+                chatMessagesWrapper.scrollTop = chatMessagesWrapper.scrollHeight - oldScrollHeight;
+                currentMessagesOffset += data.messages.length;
+    
+            } else {
+                hasMoreMessages = false;
+            }
+    
+            if (data.messages.length < 50) {
+                hasMoreMessages = false;
+            }
+        } catch (error) {
+            console.error("Error de red al cargar más mensajes:", error);
+            hasMoreMessages = false;
+        } finally {
+            isLoadingMessages = false;
+            if (loaderContainer) loaderContainer.style.display = 'none';
+        }
+    };
+    // --- FIN DE LA MODIFICACIÓN ---
+    
     const updateMembersList = (onlineUserIds) => {
-        const membersListContainer = document.getElementById('chat-members-list');
-        const sidebarCount = document.getElementById('sidebar-online-count');
-        if (!membersListContainer || !sidebarCount) return;
+        const container = document.getElementById('chat-members-list-page');
+        if (!container) return;
 
-        sidebarCount.textContent = `${onlineUserIds.length} en línea`;
-        membersListContainer.innerHTML = '';
+        const onlineCountSpan = document.getElementById('members-online-count');
+        if (onlineCountSpan) onlineCountSpan.textContent = `${onlineUserIds.length} de ${allChatMembers.length} miembros en línea`;
+
+        container.innerHTML = '';
 
         const membersByRole = allChatMembers.reduce((acc, member) => {
             const role = member.role || 'user';
-            if (!acc[role]) {
-                acc[role] = [];
-            }
+            if (!acc[role]) acc[role] = [];
             acc[role].push(member);
             return acc;
         }, {});
@@ -829,43 +1015,62 @@ function initMainController() {
 
         roleOrder.forEach(role => {
             if (membersByRole[role] && membersByRole[role].length > 0) {
-                const roleHeader = document.createElement('div');
-                roleHeader.className = 'member-role-header';
-                const roleName = role.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                roleHeader.textContent = `${roleName}s`;
-                membersListContainer.appendChild(roleHeader);
+                const roleCard = document.createElement('div');
+                roleCard.className = 'card';
 
-                membersByRole[role].forEach(member => {
+                const roleName = role.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                
+                let cardHTML = `<div class="card-item with-divider member-list-header"><strong>${roleName}s</strong></div>`;
+
+                membersByRole[role].forEach((member, index) => {
                     const isOnline = onlineUserIds.includes(member.id);
                     const statusClass = isOnline ? 'online' : 'offline';
+                    
+                    const dividerClass = index < membersByRole[role].length - 1 ? 'with-divider' : '';
 
-                    const memberElement = document.createElement('div');
-                    memberElement.className = 'member-item';
-                    memberElement.innerHTML = `
-                        <div class="member-status ${statusClass}"></div>
-                        <span class="member-name">${member.username}</span>
+                    cardHTML += `
+                        <div class="card-item member-list-item ${dividerClass}">
+                            <div class="card-content">
+                                <div class="member-status ${statusClass}" style="margin-right: 16px;"></div>
+                                <div class="card-info">
+                                    <strong>${member.username}</strong>
+                                    <span>${roleName}</span>
+                                </div>
+                            </div>
+                        </div>
                     `;
-                    membersListContainer.appendChild(memberElement);
                 });
+                
+                roleCard.innerHTML = cardHTML;
+                container.appendChild(roleCard);
             }
         });
     };
 
     const handleNavigationChange = (section, subsection = null, updateUrl = true) => {
         const wasExploreActive = isSectionExploreActive;
+        const wasChatActive = isSectionChatActive;
         resetUIComponents();
-
-        if (section !== 'chat' && websocket) {
-            websocket.close();
+    
+        if (wasChatActive && section !== 'chat') {
+            if (websocket) {
+                websocket.close();
+            }
             currentChatGroupUUID = null;
+    
+            const chatMessagesWrapper = document.getElementById('chat-messages-wrapper');
+            if (chatMessagesWrapper && chatScrollHandler) {
+                chatMessagesWrapper.removeEventListener('scroll', chatScrollHandler);
+                chatScrollHandler = null;
+            }
         }
 
         if (section === 'home') {
-            setSectionActive(sectionHome, [sectionExplore, sectionChat, sectionSettings, sectionHelp], 'home', updateUrl);
+            setSectionActive(sectionHome, [sectionExplore, sectionChat, sectionChatMembers, sectionSettings, sectionHelp], 'home', updateUrl);
             updateMainMenuButtons('toggleSectionHome');
             loadHomeContent();
         } else if (section === 'explore') {
-            setSectionActive(sectionExplore, [sectionHome, sectionChat, sectionSettings, sectionHelp], 'explore', false);
+            setSectionActive(sectionExplore, [sectionHome, sectionChat, sectionChatMembers, sectionSettings, sectionHelp], 'explore', false);
             updateMainMenuButtons('toggleSectionExplore');
             const sub = subsection || 'municipalities';
             const municipalitiesSection = document.querySelector('[data-section-id="municipalities"]');
@@ -885,11 +1090,20 @@ function initMainController() {
         }
         else if (section === 'chat') {
             activeChatGroup = subsection;
-            setSectionActive(sectionChat, [sectionHome, sectionExplore, sectionSettings, sectionHelp], 'chat', updateUrl);
+            setSectionActive(sectionChat, [sectionHome, sectionExplore, sectionSettings, sectionHelp], 'chat', false);
+            const sub = subsection.type || 'messages';
+            
+            if(sub === 'messages') {
+                setSubSectionActive(sectionChat, [sectionChatMembers], 'messages', updateUrl);
+                updateChatMenuButtons('toggleChatMessages');
+            } else if(sub === 'members') {
+                setSubSectionActive(sectionChatMembers, [sectionChat], 'members', updateUrl);
+                updateChatMenuButtons('toggleChatMembers');
+            }
             loadChat(subsection);
         }
         else if (section === 'settings') {
-            setSectionActive(sectionSettings, [sectionHome, sectionExplore, sectionChat, sectionHelp], 'settings', false);
+            setSectionActive(sectionSettings, [sectionHome, sectionExplore, sectionChat, sectionChatMembers, sectionHelp], 'settings', false);
             const sub = subsection || 'profile';
             if (sub === 'profile') {
                 setSubSectionActive(sectionProfile, [sectionLogin, sectionAccessibility], 'profile', updateUrl);
@@ -903,7 +1117,7 @@ function initMainController() {
                 updateSettingsMenuButtons('toggleSectionAccessibility');
             }
         } else if (section === 'help') {
-            setSectionActive(sectionHelp, [sectionHome, sectionExplore, sectionChat, sectionHelp], 'help', false);
+            setSectionActive(sectionHelp, [sectionHome, sectionExplore, sectionChat, sectionChatMembers, sectionSettings], 'help', false);
             const sub = subsection || 'privacy';
             if (sub === 'privacy') {
                 setSubSectionActive(sectionPrivacy, [sectionTerms, sectionCookies, sectionSuggestions], 'privacy', updateUrl);
@@ -947,7 +1161,7 @@ function initMainController() {
 
     const handleProfileUpdate = async (button) => {
         const field = button.dataset.field;
-        const parentItem = button.closest('.profile-card-item');
+        const parentItem = button.closest('.card-item');
         const editState = parentItem.querySelector('.edit-state');
         const viewState = parentItem.querySelector('.view-state');
         const input = editState.querySelector('.edit-input');
@@ -990,7 +1204,7 @@ function initMainController() {
             const result = await response.json();
 
             if (result.success) {
-                const displaySpan = viewState.querySelector('.profile-card-info span');
+                const displaySpan = viewState.querySelector('.card-info span');
                 displaySpan.textContent = result.newValue;
 
                 editState.classList.add('hidden');
@@ -1236,7 +1450,7 @@ function initMainController() {
                     <div class="community-card-icon-wrapper">
                         <span class="material-symbols-rounded">${icon}</span>
                     </div>
-                    <div class="community-card-info">
+                    <div class="card-info">
                         <h3 class="community-card-title">${group.group_title}</h3>
                         <p class="community-card-subtitle">${group.group_subtitle}</p>
                     </div>
@@ -1301,7 +1515,7 @@ function initMainController() {
                         <div class="community-card-icon-wrapper">
                             <span class="material-symbols-rounded">${icon}</span>
                         </div>
-                        <div class="community-card-info">
+                        <div class="card-info">
                             <h3 class="community-card-title">${group.group_title}</h3>
                             <p class="community-card-subtitle">${group.group_subtitle}</p>
                         </div>
@@ -1337,7 +1551,7 @@ function initMainController() {
                     <div class="community-card-icon-wrapper">
                         <span class="material-symbols-rounded">groups</span>
                     </div>
-                    <div class="community-card-info">
+                    <div class="card-info">
                         <h3 class="community-card-title">Comunidad de Victoria</h3>
                         <p class="community-card-subtitle">Espacio para los residentes de la capital.</p>
                     </div>
@@ -1352,7 +1566,7 @@ function initMainController() {
                     <div class="community-card-icon-wrapper">
                         <span class="material-symbols-rounded">school</span>
                     </div>
-                    <div class="community-card-info">
+                    <div class="card-info">
                         <h3 class="community-card-title">Universidad Politécnica</h3>
                         <p class="community-card-subtitle">Comunidad oficial de estudiantes.</p>
                     </div>
@@ -1420,7 +1634,7 @@ function initMainController() {
                 const groupTitle = card.querySelector('.community-card-title').textContent;
 
                 if (groupId && groupTitle) {
-                    handleNavigationChange('chat', { uuid: groupId, title: groupTitle });
+                    handleNavigationChange('chat', { uuid: groupId, title: groupTitle, type: 'messages' });
                 }
             });
         }
@@ -1439,7 +1653,7 @@ function initMainController() {
                 }
             });
         }
-
+        
         document.body.addEventListener('click', (e) => {
             const replyButton = e.target.closest('[data-action="reply-message"]');
             if (replyButton) {
@@ -1490,13 +1704,29 @@ function initMainController() {
                 }
             }
 
-            // --- INICIO DE LA MODIFICACIÓN: MANEJAR CLIC EN ELIMINAR ---
             const deleteButton = e.target.closest('[data-action="delete-message"]');
             if (deleteButton) {
                 e.stopPropagation();
                 const messageBubble = document.querySelector('.message-bubble.active');
                 if (messageBubble) {
                     const messageId = messageBubble.dataset.messageId;
+                    const messageText = messageBubble.querySelector('.message-content p').textContent;
+                    const confirmDialog = document.querySelector('[data-dialog="confirmDeleteMessage"]');
+
+                    if (confirmDialog) {
+                        confirmDialog.querySelector('#message-to-delete-text').textContent = messageText;
+                        confirmDialog.querySelector('input[name="message_id_to_delete"]').value = messageId;
+                        closeAllModules();
+                        openAccountActionModal('confirmDeleteMessage');
+                    }
+                }
+            }
+
+            const confirmDeleteMessageButton = e.target.closest('[data-action="confirmDeleteMessageAction"]');
+            if (confirmDeleteMessageButton) {
+                const dialog = confirmDeleteMessageButton.closest('[data-dialog="confirmDeleteMessage"]');
+                if (dialog) {
+                    const messageId = dialog.querySelector('input[name="message_id_to_delete"]').value;
                     if (websocket && websocket.readyState === WebSocket.OPEN) {
                         const messageData = {
                             type: 'delete_message',
@@ -1504,10 +1734,9 @@ function initMainController() {
                         };
                         websocket.send(JSON.stringify(messageData));
                     }
+                    closeAccountActionModal();
                 }
-                closeMessageOptions();
             }
-            // --- FIN DE LA MODIFICACIÓN ---
 
             const confirmReportButton = e.target.closest('[data-action="confirmReport"]');
             if (confirmReportButton) {
@@ -1524,13 +1753,11 @@ function initMainController() {
                 const messageBubble = document.querySelector('.message-bubble.active');
                 if (messageBubble) {
                     const messageText = messageBubble.querySelector('.message-content p').textContent;
-                    // --- INICIO DE LA MODIFICACIÓN ---
                     if (navigator.clipboard && window.isSecureContext) {
                         navigator.clipboard.writeText(messageText).catch(err => {
                             console.error('Error al copiar el texto con la API moderna: ', err);
                         });
                     } else {
-                        // Fallback para HTTP o navegadores no compatibles
                         const textArea = document.createElement("textarea");
                         textArea.value = messageText;
                         textArea.style.position = "fixed";
@@ -1545,13 +1772,11 @@ function initMainController() {
                         }
                         document.body.removeChild(textArea);
                     }
-                    // --- FIN DE LA MODIFICACIÓN ---
                     closeMessageOptions();
                 }
             }
         });
 
-        // --- INICIO DE LA MODIFICACIÓN ---
         const chatForm = document.getElementById('chat-form');
         if (chatForm) {
             chatForm.addEventListener('submit', (e) => {
@@ -1568,7 +1793,6 @@ function initMainController() {
                     websocket.send(JSON.stringify(messageData));
                     input.value = '';
 
-                    // Ocultar la vista previa y resetear el ID de respuesta
                     currentReplyMessageId = null;
                     const previewContainer = document.getElementById('reply-preview-container');
                     previewContainer.classList.add('disabled');
@@ -1576,7 +1800,6 @@ function initMainController() {
                 }
             });
         }
-        // --- FIN DE LA MODIFICACIÓN ---
 
         const usernameInput = document.querySelector('[data-section="name"] .edit-input');
         if (usernameInput) {
@@ -1619,7 +1842,7 @@ function initMainController() {
         }
 
         document.querySelectorAll('[data-action="toggleSelector"]').forEach((button, index) => {
-            const parentControlGroup = button.closest('.profile-control-group, .explore-control-group');
+            const parentControlGroup = button.closest('.control-group, .explore-control-group');
             if (!parentControlGroup) return;
 
             const selectorDropdown = parentControlGroup.querySelector('[data-module="moduleSelector"]');
@@ -1816,7 +2039,7 @@ function initMainController() {
 
         document.querySelectorAll('.toggle-switch input[type="checkbox"]').forEach(toggle => {
             toggle.addEventListener('change', (e) => {
-                const parentItem = e.target.closest('.profile-card-item');
+                const parentItem = e.target.closest('.card-item');
                 if (parentItem && parentItem.dataset.preferenceField) {
                     const field = parentItem.dataset.preferenceField;
                     const value = e.target.checked;
@@ -1827,7 +2050,7 @@ function initMainController() {
 
         document.querySelectorAll('[data-action="toggleEditState"]').forEach(button => {
             button.addEventListener('click', (e) => {
-                const parent = e.target.closest('.profile-card-item');
+                const parent = e.target.closest('.card-item');
                 parent.querySelector('.view-state').classList.add('hidden');
                 parent.querySelector('.edit-state').classList.remove('hidden');
             });
@@ -1835,7 +2058,7 @@ function initMainController() {
 
         document.querySelectorAll('[data-action="toggleViewState"]').forEach(button => {
             button.addEventListener('click', (e) => {
-                const parent = e.target.closest('.profile-card-item');
+                const parent = e.target.closest('.card-item');
                 parent.querySelector('.edit-state').classList.add('hidden');
                 parent.querySelector('.view-state').classList.remove('hidden');
                 const errorSpan = parent.querySelector('.edit-error-message');
@@ -1898,6 +2121,24 @@ function initMainController() {
                 button.addEventListener('click', () => {
                     if (!isSectionExploreActive) handleNavigationChange('explore', 'municipalities');
                 });
+            });
+        }
+
+        if (toggleChatMessagesButton) {
+            toggleChatMessagesButton.addEventListener('click', () => {
+                if (!isChatMessagesActive) {
+                    activeChatGroup.type = 'messages';
+                    handleNavigationChange('chat', activeChatGroup);
+                }
+            });
+        }
+
+        if (toggleChatMembersButton) {
+            toggleChatMembersButton.addEventListener('click', () => {
+                if (!isChatMembersActive) {
+                    activeChatGroup.type = 'members';
+                    handleNavigationChange('chat', activeChatGroup);
+                }
             });
         }
 
@@ -2035,7 +2276,7 @@ function initMainController() {
         if (initialState) {
             let initialSubsection = initialState.subsection;
             if (initialState.isChatSection && initialState.id) {
-                initialSubsection = { uuid: initialState.id, title: 'Cargando...' };
+                initialSubsection = { uuid: initialState.id, title: 'Cargando...', type: initialState.subsection };
             }
             handleNavigationChange(initialState.section, initialSubsection, false);
 

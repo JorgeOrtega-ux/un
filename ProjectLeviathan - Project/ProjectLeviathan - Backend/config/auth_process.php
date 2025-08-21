@@ -1,6 +1,7 @@
 <?php
 // Establece la zona horaria a UTC para todos los cálculos de fecha y hora.
-date_default_timezone_set('UTC');
+date_default_timezone_set('America/Chicago');
+
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();

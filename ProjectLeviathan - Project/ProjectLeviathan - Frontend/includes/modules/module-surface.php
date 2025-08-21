@@ -109,6 +109,23 @@
                     <span>Volver a inicio</span>
                 </div>
             </div>
+            <div class="menu-link-separator"></div>
+            <div class="menu-link <?php echo ($CURRENT_SUBSECTION === 'messages') ? 'active' : ''; ?>" data-action="toggleChatMessages">
+                <div class="menu-link-icon">
+                    <span class="material-symbols-rounded">chat</span>
+                </div>
+                <div class="menu-link-text">
+                    <span id="chat-messages-menu-title">Chat</span>
+                </div>
+            </div>
+            <div class="menu-link <?php echo ($CURRENT_SUBSECTION === 'members') ? 'active' : ''; ?>" data-action="toggleChatMembers">
+                <div class="menu-link-icon">
+                    <span class="material-symbols-rounded">groups</span>
+                </div>
+                <div class="menu-link-text">
+                    <span>Ver miembros</span>
+                </div>
+            </div>
         </div>
     </div>
     </div>

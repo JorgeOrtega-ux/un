@@ -5,23 +5,23 @@ $prefs = $_SESSION['user_preferences'] ?? [];
 // --- FIN DE LA MODIFICACIÓN ---
 ?>
 <div class="section-content overflow-y <?php echo $CURRENT_SUBSECTION === 'accessibility' ? 'active' : 'disabled'; ?>" data-section="sectionAccessibility">
-    <div class="settings-container">
-        <div class="profile-card">
-            <div class="profile-header-container">
-                <div class="profile-header">
+    <div class="content-container">
+        <div class="card">
+            <div class="card-header-container">
+                <div class="card-header">
                     <h2>Accesibilidad</h2>
                     <p>Configura las opciones de accesibilidad para adaptar la interfaz a tus necesidades.</p>
                 </div>
             </div>
         </div>
 
-        <div class="profile-card">
-            <div class="profile-card-item-column" data-preference-field="theme">
-                <div class="profile-card-info allow-wrap">
+        <div class="card">
+            <div class="card-item-column" data-preference-field="theme">
+                <div class="card-info allow-wrap">
                     <strong>Tema</strong>
                     <span>Personaliza la apariencia de tu cuenta. Selecciona un tema o sincroniza con tu sistema.</span>
                 </div>
-                <div class="profile-control-group">
+                <div class="control-group">
                     <div class="selector-input" data-action="toggleSelector">
                         <div class="selected-value">
                             <div class="selected-value-icon left">
@@ -57,10 +57,10 @@ $prefs = $_SESSION['user_preferences'] ?? [];
             </div>
         </div>
 
-        <div class="profile-card">
-            <div class="profile-card-item with-divider toggle-item" data-preference-field="shortcuts_need_modifier">
-                <div class="profile-card-content">
-                    <div class="profile-card-info allow-wrap">
+        <div class="card">
+            <div class="card-item with-divider toggle-item" data-preference-field="shortcuts_need_modifier">
+                <div class="card-content">
+                    <div class="card-info allow-wrap">
                         <strong>Los atajos necesitan un modificador</strong>
                         <span>Para crear atajos, es necesario usar la tecla modificadora Alt.</span>
                     </div>
@@ -71,9 +71,9 @@ $prefs = $_SESSION['user_preferences'] ?? [];
                     <span class="material-symbols-rounded">done</span>
                 </label>
             </div>
-            <div class="profile-card-item toggle-item" data-preference-field="high_contrast_colors">
-                <div class="profile-card-content">
-                    <div class="profile-card-info allow-wrap">
+            <div class="card-item toggle-item" data-preference-field="high_contrast_colors">
+                <div class="card-content">
+                    <div class="card-info allow-wrap">
                         <strong>Contraste alto de colores</strong>
                         <span>Se mantiene un mayor contraste entre el texto y el fondo, incluidos los fondos con degradados.</span>
                     </div>

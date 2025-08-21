@@ -42,7 +42,10 @@ class Router {
             $parts = explode('/', $path);
             if (count($parts) === 2 && !empty($parts[1])) {
                 // Devuelve la sección 'chat' y el ID (UUID)
-                return ['section' => 'chat', 'subsection' => null, 'id' => $parts[1]];
+                return ['section' => 'chat', 'subsection' => 'messages', 'id' => $parts[1]];
+            }
+            if (count($parts) === 3 && $parts[1] === 'members' && !empty($parts[2])) {
+                return ['section' => 'chat', 'subsection' => 'members', 'id' => $parts[2]];
             }
         }
         // --- FIN DE LA MODIFICACIÓN ---

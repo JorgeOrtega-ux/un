@@ -1,22 +1,22 @@
 <div class="section-content overflow-y <?php echo $CURRENT_SUBSECTION === 'login' ? 'active' : 'disabled'; ?>" data-section="sectionLogin">
-    <div class="settings-container">
-        <div class="profile-card">
-            <div class="profile-header-container">
-                <div class="profile-header">
+    <div class="content-container">
+        <div class="card">
+            <div class="card-header-container">
+                <div class="card-header">
                     <h2>Iniciar sesión</h2>
                     <p>Gestiona tu contraseña, sesiones activas y otros datos relacionados con la seguridad de tu cuenta.</p>
                 </div>
             </div>
         </div>
 
-        <div class="profile-card">
-            <div class="profile-card-item column-layout">
+        <div class="card">
+            <div class="card-item column-layout">
                 <div class="view-state">
-                    <div class="profile-card-content">
+                    <div class="card-content">
                         <div class="icon-background">
                             <span class="material-symbols-rounded">lock</span>
                         </div>
-                        <div class="profile-card-info allow-wrap">
+                        <div class="card-info allow-wrap">
                             <strong>Contraseña</strong>
                             <span id="last-password-update">Cargando...</span>
                         </div>
@@ -26,11 +26,11 @@
             </div>
         </div>
 
-        <div class="profile-card">
-            <div class="profile-card-item with-divider column-layout">
+        <div class="card">
+            <div class="card-item with-divider column-layout">
                 <div class="view-state">
-                    <div class="profile-card-content">
-                        <div class="profile-card-info allow-wrap">
+                    <div class="card-content">
+                        <div class="card-info allow-wrap">
                             <strong>Cerrar sesión en todos los dispositivos</strong>
                             <div class="logout-everywhere-section">
                                 <span>¿Crees que olvidaste cerrar sesión en otro lugar? Protege tu cuenta cerrando todas las sesiones activas ahora mismo.</span>
@@ -40,10 +40,10 @@
                     <button class="edit-button">Cerrar todas las sesiones</button>
                 </div>
             </div>
-            <div class="profile-card-item column-layout">
+            <div class="card-item column-layout">
                 <div class="view-state">
-                    <div class="profile-card-content">
-                        <div class="profile-card-info allow-wrap">
+                    <div class="card-content">
+                        <div class="card-info allow-wrap">
                             <strong>Eliminar tu cuenta</strong>
                             <div class="delete-account-warning">
                                 <p>
