@@ -58,8 +58,12 @@ $validation_rules = [
     'get_user_groups' => [],
     'get_municipalities' => [],
     'get_account_dates' => [],
-    'report_message' => ['message_id' => 'required|integer'],
-    'delete_message' => ['message_id' => 'required|integer']
+    'report_message' => [
+        'message_id' => 'required|integer',
+        'report_image' => 'boolean' // <-- AÑADIDO
+    ],
+    'delete_message' => ['message_id' => 'required|integer'],
+    'upload_image' => ['group_uuid' => 'required|uuid']
 ];
 
 if (!array_key_exists($action, $validation_rules)) {
@@ -85,11 +89,17 @@ foreach ($rules as $param => $rule) {
         if ($part === 'uuid' && !preg_match('/^[a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}$/i', $value)) {
             $valid = false; $message = "El formato del UUID para '{$param}' no es válido."; break;
         }
-        // --- INICIO DE LA CORRECCIÓN ---
         if ($part === 'integer' && filter_var($value, FILTER_VALIDATE_INT) === false) {
             $valid = false; $message = "El campo '{$param}' debe ser un número entero."; break;
         }
-        // --- FIN DE LA CORRECCIÓN ---
+        // --- INICIO DE LA MODIFICACIÓN ---
+        if ($part === 'boolean') {
+            $value = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($value === null) {
+                $valid = false; $message = "El campo '{$param}' debe ser un valor booleano."; break;
+            }
+        }
+        // --- FIN DE LA MODIFICACIÓN ---
         if (strpos($part, 'enum:') === 0) {
             $options = explode(',', substr($part, 5));
             if (!in_array($value, $options)) {
@@ -260,7 +270,9 @@ if ($action === 'get_chat_messages') {
             "SELECT
                 gm.id as message_id, gm.user_id, u.username,
                 gm.is_deleted, gm.message_text AS message, gm.sent_at AS timestamp,
+                gm.image_url,
                 replied_msg.message_text AS replied_message_text,
+                replied_msg.image_url AS replied_image_url,
                 replied_user.username AS replied_username
              FROM group_messages gm
              JOIN users u ON gm.user_id = u.id
@@ -287,19 +299,21 @@ if ($action === 'get_chat_messages') {
                 'message' => $msg['is_deleted'] ? 'Mensaje eliminado' : $msg['message'],
                 'timestamp' => $dt->format('c'),
                 'is_deleted' => (bool)$msg['is_deleted'],
+                'image_url' => $msg['image_url'],
                 'reply_context' => null
             ];
-
-            if (!$msg['is_deleted'] && !empty($msg['replied_username']) && !empty($msg['replied_message_text'])) {
+            
+            if (!$msg['is_deleted'] && !empty($msg['replied_username'])) {
                 $message_item['reply_context'] = [
                     'username' => $msg['replied_username'],
-                    'message_text' => $msg['replied_message_text']
+                    'message_text' => $msg['replied_message_text'],
+                    'image_url' => $msg['replied_image_url']
                 ];
             }
             $messages[] = $message_item;
         }
 
-        send_json_response(true, 'Mensajes obtenidos.', ['messages' => array_reverse($messages)]);
+       send_json_response(true, 'Mensajes obtenidos.', ['messages' => $messages]);
 
     } catch (PDOException $e) {
         error_log("API Error (get_chat_messages): " . $e->getMessage());
@@ -314,10 +328,11 @@ if ($action === 'report_message') {
     }
 
     $messageId = $request_data['message_id'];
+    $reportImage = $request_data['report_image'] ?? false;
 
     try {
         $pdo->beginTransaction();
-        $stmt_msg = $pdo->prepare("SELECT user_id, group_uuid FROM group_messages WHERE id = :message_id");
+        $stmt_msg = $pdo->prepare("SELECT user_id, group_uuid, image_url FROM group_messages WHERE id = :message_id");
         $stmt_msg->execute(['message_id' => $messageId]);
         $message = $stmt_msg->fetch(PDO::FETCH_ASSOC);
 
@@ -327,6 +342,11 @@ if ($action === 'report_message') {
         if ($message['user_id'] == $userId) {
             $pdo->rollBack(); send_json_response(false, 'No puedes reportar tus propios mensajes.');
         }
+        
+        if ($reportImage && empty($message['image_url'])) {
+            $pdo->rollBack(); send_json_response(false, 'Este mensaje no contiene una imagen para reportar.');
+        }
+
         $stmt_check = $pdo->prepare("SELECT id FROM message_reports WHERE message_id = :message_id AND reporter_user_id = :reporter_id");
         $stmt_check->execute(['message_id' => $messageId, 'reporter_id' => $userId]);
         if ($stmt_check->fetch()) {
@@ -334,12 +354,15 @@ if ($action === 'report_message') {
         }
 
         $stmt_insert = $pdo->prepare(
-            "INSERT INTO message_reports (message_id, group_uuid, reported_user_id, reporter_user_id)
-             VALUES (:message_id, :group_uuid, :reported_user_id, :reporter_user_id)"
+            "INSERT INTO message_reports (message_id, group_uuid, reported_user_id, reporter_user_id, image_reported)
+             VALUES (:message_id, :group_uuid, :reported_user_id, :reporter_user_id, :image_reported)"
         );
         $stmt_insert->execute([
-            'message_id' => $messageId, 'group_uuid' => $message['group_uuid'],
-            'reported_user_id' => $message['user_id'], 'reporter_user_id' => $userId
+            'message_id' => $messageId,
+            'group_uuid' => $message['group_uuid'],
+            'reported_user_id' => $message['user_id'],
+            'reporter_user_id' => $userId,
+            'image_reported' => $reportImage ? 1 : 0
         ]);
         $pdo->commit();
         send_json_response(true, 'Mensaje reportado correctamente.');
@@ -350,6 +373,7 @@ if ($action === 'report_message') {
         send_json_response(false, 'Error del servidor al procesar el reporte.');
     }
 }
+
 
 // ACCIÓN PARA ELIMINAR MENSAJE
 if ($action === 'delete_message') {
@@ -730,6 +754,49 @@ if ($action === 'delete_account') {
     } catch (PDOException $e) {
         error_log("API Error (delete_account): " . $e->getMessage());
         send_json_response(false, 'Error del servidor al eliminar la cuenta.');
+    }
+}
+
+if ($action === 'upload_image') {
+    if (empty($userId)) {
+        send_json_response(false, 'Usuario no autenticado.');
+    }
+
+    $groupUuid = $request_data['group_uuid'];
+
+    if (!isset($_FILES['image'])) {
+        send_json_response(false, 'No se recibió ninguna imagen.');
+    }
+
+    $image = $_FILES['image'];
+
+    if ($image['error'] !== UPLOAD_ERR_OK) {
+        send_json_response(false, 'Error al subir la imagen.');
+    }
+
+    $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!in_array($image['type'], $allowed_types)) {
+        send_json_response(false, 'Tipo de archivo no permitido.');
+    }
+
+    if ($image['size'] > 5 * 1024 * 1024) { // 5 MB
+        send_json_response(false, 'La imagen es demasiado grande.');
+    }
+
+    $upload_dir = __DIR__ . '/../uploads/chat_images/';
+    if (!is_dir($upload_dir)) {
+        mkdir($upload_dir, 0777, true);
+    }
+
+    $filename = uniqid() . '-' . basename($image['name']);
+    $destination = $upload_dir . $filename;
+
+    if (move_uploaded_file($image['tmp_name'], $destination)) {
+        $base_url = str_replace('api/api_handler.php', '', $_SERVER['PHP_SELF']);
+        $image_url = $base_url . 'uploads/chat_images/' . $filename;
+        send_json_response(true, 'Imagen subida correctamente.', ['image_url' => $image_url]);
+    } else {
+        send_json_response(false, 'Error al guardar la imagen.');
     }
 }
 ?>

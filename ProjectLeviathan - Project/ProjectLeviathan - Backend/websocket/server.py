@@ -127,15 +127,15 @@ async def broadcast_message(group_uuid, message_data):
             except websockets.exceptions.ConnectionClosed:
                 pass
 
-async def save_message_to_db(group_uuid, user_id, message_text, reply_to_id=None):
+async def save_message_to_db(group_uuid, user_id, message_text, image_url=None, reply_to_id=None):
     connection = get_db_connection()
     if not connection:
         return None
 
     cursor = connection.cursor()
     try:
-        query = "INSERT INTO group_messages (group_uuid, user_id, message_text, reply_to_message_id) VALUES (%s, %s, %s, %s)"
-        cursor.execute(query, (group_uuid, user_id, message_text, reply_to_id))
+        query = "INSERT INTO group_messages (group_uuid, user_id, message_text, image_url, reply_to_message_id) VALUES (%s, %s, %s, %s, %s)"
+        cursor.execute(query, (group_uuid, user_id, message_text, image_url, reply_to_id))
         new_message_id = cursor.lastrowid
         connection.commit()
         return new_message_id
@@ -147,6 +147,7 @@ async def save_message_to_db(group_uuid, user_id, message_text, reply_to_id=None
         cursor.close()
         connection.close()
 
+# --- INICIO DE LA MODIFICACIÓN ---
 async def get_reply_context(reply_to_id):
     if not reply_to_id:
         return None
@@ -158,7 +159,7 @@ async def get_reply_context(reply_to_id):
     cursor = connection.cursor(dictionary=True)
     try:
         query = """
-            SELECT u.username, gm.message_text
+            SELECT u.username, gm.message_text, gm.image_url
             FROM group_messages gm
             JOIN users u ON gm.user_id = u.id
             WHERE gm.id = %s
@@ -172,6 +173,7 @@ async def get_reply_context(reply_to_id):
     finally:
         cursor.close()
         connection.close()
+# --- FIN DE LA MODIFICACIÓN ---
 
 async def chat_handler(websocket):
     group_uuid = None
@@ -236,6 +238,7 @@ async def chat_handler(websocket):
 
                 if data.get('type') == 'chat_message':
                     message_text = data.get('message', '').strip()
+                    image_url = data.get('image_url')
                     reply_to_id = data.get('reply_to_message_id')
 
                     if len(message_text) > MAX_MESSAGE_LENGTH:
@@ -245,8 +248,8 @@ async def chat_handler(websocket):
                         }))
                         continue
 
-                    if message_text:
-                        new_message_id = await save_message_to_db(group_uuid, user_id, message_text, reply_to_id)
+                    if message_text or image_url:
+                        new_message_id = await save_message_to_db(group_uuid, user_id, message_text, image_url, reply_to_id)
                         if new_message_id:
                             reply_context = await get_reply_context(reply_to_id)
                             message_data = {
@@ -256,6 +259,7 @@ async def chat_handler(websocket):
                                 "username": username,
                                 "message": message_text,
                                 "timestamp": datetime.now(timezone.utc).isoformat(),
+                                "image_url": image_url,
                                 "reply_context": reply_context,
                                 "is_deleted": False
                             }

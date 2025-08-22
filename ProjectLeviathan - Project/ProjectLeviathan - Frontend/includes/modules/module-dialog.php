@@ -91,6 +91,13 @@
         <div class="dialog-body">
             <div class="reported-message-container">
                 <p class="reported-message-text"></p>
+                <img src="" class="reported-message-image" alt="Imagen a reportar" style="display: none;">
+            </div>
+            <div class="report-options" style="display: none;">
+                <label class="report-checkbox-label">
+                    <input type="checkbox" name="report_image" id="report-image-checkbox">
+                    <span>Reportar también la imagen</span>
+                </label>
             </div>
             <input type="hidden" name="message_id" value="">
             <div class="dialog-error-message"></div>
@@ -100,6 +107,7 @@
             <button class="save-button danger-button" data-action="confirmReport">Reportar</button>
         </div>
     </div>
+
 
     <div class="menu-content dialog-pane disabled" data-dialog="confirmDeleteMessage">
         <div class="dialog-header">

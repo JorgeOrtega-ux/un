@@ -11,13 +11,15 @@ function initMainController() {
     let currentChatGroupUUID = null;
     let allChatMembers = [];
     let messageOptionsPopper = null;
+    let attachDropdownPopper = null;
     let currentReplyMessageId = null;
+    let currentImageFile = null;
 
     let currentMessagesOffset = 0;
     let isLoadingMessages = false;
     let hasMoreMessages = true;
-    
-    let chatScrollHandler = null; 
+
+    let chatScrollHandler = null;
 
     const popperInstances = {};
 
@@ -131,21 +133,21 @@ function initMainController() {
         const toState = (active) => active ? '✅ Activo' : '❌ Inactivo';
         const tableData = {
             '── Sections ──': { section: 'Home', status: toState(isSectionHomeActive) },
-            '   ': { section: 'Explore', status: toState(isSectionExploreActive) },
-            '    ': { section: 'Chat', status: toState(isSectionChatActive) },
-            '     ': { section: 'Settings', status: toState(isSectionSettingsActive) },
-            '      ': { section: 'Help', status: toState(isSectionHelpActive) },
+            ' ': { section: 'Explore', status: toState(isSectionExploreActive) },
+            ' ': { section: 'Chat', status: toState(isSectionChatActive) },
+            ' ': { section: 'Settings', status: toState(isSectionSettingsActive) },
+            ' ': { section: 'Help', status: toState(isSectionHelpActive) },
             '── Sub-sections (Explore) ──': { section: 'Municipalities', status: toState(isSectionMunicipalitiesActive) },
-            '       ': { section: 'Universities', status: toState(isSectionUniversitiesActive) },
+            ' ': { section: 'Universities', status: toState(isSectionUniversitiesActive) },
             '── Sub-sections (Chat) ──': { section: 'Messages', status: toState(isChatMessagesActive) },
-            '        ': { section: 'Members', status: toState(isChatMembersActive) },
+            ' ': { section: 'Members', status: toState(isChatMembersActive) },
             '── Sub-sections (Settings) ──': { section: 'Profile', status: toState(isSectionProfileActive) },
-            '         ': { section: 'Login', status: toState(isSectionLoginActive) },
-            '          ': { section: 'Accessibility', status: toState(isSectionAccessibilityActive) },
+            ' ': { section: 'Login', status: toState(isSectionLoginActive) },
+            ' ': { section: 'Accessibility', status: toState(isSectionAccessibilityActive) },
             '── Sub-sections (Help) ──': { section: 'Privacy Policy', status: toState(isSectionPrivacyActive) },
-            '           ': { section: 'Terms & Conditions', status: toState(isSectionTermsActive) },
-            '            ': { section: 'Cookies Policy', status: toState(isSectionCookiesActive) },
-            '             ': { section: 'Suggestions', status: toState(isSectionSuggestionsActive) },
+            ' ': { section: 'Terms & Conditions', status: toState(isSectionTermsActive) },
+            ' ': { section: 'Cookies Policy', status: toState(isSectionCookiesActive) },
+            ' ': { section: 'Suggestions', status: toState(isSectionSuggestionsActive) },
         };
         console.group("ProjectLeviathan - State Overview");
         console.table(tableData);
@@ -457,6 +459,37 @@ function initMainController() {
         });
     };
 
+    const closeAttachDropdown = () => {
+        if (attachDropdownPopper) {
+            const dropdown = document.getElementById('attach-dropdown');
+            if (dropdown) {
+                dropdown.remove();
+            }
+            attachDropdownPopper.destroy();
+            attachDropdownPopper = null;
+            return true;
+        }
+        return false;
+    };
+
+    const openAttachDropdown = (attachButton) => {
+        if (attachDropdownPopper) {
+            closeAttachDropdown();
+            return;
+        }
+
+        const template = document.getElementById('attach-dropdown-template');
+        const dropdown = template.cloneNode(true);
+        dropdown.id = 'attach-dropdown';
+        dropdown.style.display = 'block';
+        document.body.appendChild(dropdown);
+
+        attachDropdownPopper = Popper.createPopper(attachButton, dropdown, {
+            placement: 'top-start',
+            modifiers: [{ name: 'offset', options: { offset: [0, 8] } }],
+        });
+    };
+
     const closeAllSelectors = () => {
         let closed = false;
         document.querySelectorAll('[data-module="moduleSelector"].active').forEach(selector => {
@@ -483,6 +516,7 @@ function initMainController() {
         closeMenuSurface();
         closeAccountActionModal();
         closeMessageOptions();
+        closeAttachDropdown();
     };
 
     const updateMainMenuButtons = (activeAction) => {
@@ -661,7 +695,7 @@ function initMainController() {
             return '';
         }
     };
-    
+
     const formatDateSeparator = (isoTimestamp) => {
         const date = new Date(isoTimestamp);
         const today = new Date();
@@ -680,6 +714,17 @@ function initMainController() {
                 day: 'numeric'
             });
         }
+    };
+
+    const formatMessageText = (text) => {
+        const mentionRegex = /(^|\s)@([a-zA-Z0-9_]{4,25})\b/g;
+        return text.replace(mentionRegex, (match, precedingWhitespace, username) => {
+            const userExists = allChatMembers.some(member => member.username === username);
+            if (userExists) {
+                return `${precedingWhitespace}<span class="mention">@${username}</span>`;
+            }
+            return match;
+        });
     };
 
     const connectWebSocket = async (groupUuid) => {
@@ -756,93 +801,65 @@ function initMainController() {
             alert('Error de conexión con el chat.');
         }
     };
-    
-    // --- INICIO DE LA MODIFICACIÓN ---
+
     const appendMessage = (data) => {
         const messagesContainer = document.getElementById('chat-messages-container');
         if (!messagesContainer) return;
-    
-        const messageDate = new Date(data.timestamp).toDateString();
-    
+
+        const welcomeMessage = document.getElementById('chat-welcome-message');
+        if (welcomeMessage) {
+            welcomeMessage.style.display = 'none';
+        }
+
         const lastBubble = messagesContainer.querySelector('.message-bubble:last-child');
         const lastBubbleDate = lastBubble ? new Date(lastBubble.dataset.timestamp).toDateString() : null;
-    
+        const messageDate = new Date(data.timestamp).toDateString();
+
         if (!lastBubble || messageDate !== lastBubbleDate) {
             const dateSeparator = document.createElement('div');
             dateSeparator.className = 'chat-date-separator';
             dateSeparator.innerHTML = `<span>${formatDateSeparator(data.timestamp)}</span>`;
             messagesContainer.appendChild(dateSeparator);
         }
-    
+
         const isSentByCurrentUser = data.user_id === window.PROJECT_CONFIG.userId;
         const messageClass = isSentByCurrentUser ? 'sent' : 'received';
         const username = isSentByCurrentUser ? 'Tú' : data.username;
         const time = formatMessageTime(data.timestamp);
-    
+        const formattedMessage = formatMessageText(data.message);
+
         const messageBubble = document.createElement('div');
         messageBubble.className = `message-bubble ${messageClass}`;
         messageBubble.dataset.messageId = data.message_id;
         messageBubble.dataset.authorId = data.user_id;
         messageBubble.dataset.timestamp = data.timestamp;
-    
+
         let replyHTML = '';
         if (data.reply_context && !data.is_deleted) {
             const replyAuthor = data.reply_context.username === window.PROJECT_CONFIG.username ? 'Tú' : data.reply_context.username;
-            replyHTML = `
-                <div class="reply-context">
-                    <strong>${replyAuthor}</strong>
-                    <p>${data.reply_context.message_text}</p>
-                </div>
-            `;
-        }
-    
-        if (data.is_deleted) {
-            messageBubble.classList.add('deleted-message');
-            messageBubble.innerHTML = `
-                <div class="message-content">
-                    <p><em>${data.message}</em></p>
-                </div>`;
-        } else {
-            messageBubble.innerHTML = `
-                ${replyHTML}
-                <span class="message-info">${username}</span>
-                <div class="message-content">
-                    <p>${data.message}</p>
-                    <span class="message-time">${time}</span>
-                </div>`;
-        }
-    
-        messagesContainer.appendChild(messageBubble);
-        messagesContainer.parentElement.scrollTop = messagesContainer.parentElement.scrollHeight;
-    };
-    // --- FIN DE LA MODIFICACIÓN ---
-    
-    const prependMessage = (data) => {
-        const messagesContainer = document.getElementById('chat-messages-container');
-        if (!messagesContainer) return;
-    
-        const isSentByCurrentUser = data.user_id === window.PROJECT_CONFIG.userId;
-        const messageClass = isSentByCurrentUser ? 'sent' : 'received';
-        const username = isSentByCurrentUser ? 'Tú' : data.username;
-        const time = formatMessageTime(data.timestamp);
-    
-        const messageBubble = document.createElement('div');
-        messageBubble.className = `message-bubble ${messageClass}`;
-        messageBubble.dataset.messageId = data.message_id;
-        messageBubble.dataset.authorId = data.user_id;
-        messageBubble.dataset.timestamp = data.timestamp;
-    
-        let replyHTML = '';
-        if (data.reply_context && !data.is_deleted) {
-            const replyAuthor = data.reply_context.username === window.PROJECT_CONFIG.username ? 'Tú' : data.reply_context.username;
+            const replyText = data.reply_context.message_text;
+            const replyImage = data.reply_context.image_url;
+
+            let replyContentHTML = '';
+            if (replyImage) {
+                replyContentHTML += `<img src="${replyImage}" class="reply-thumbnail" alt="Imagen respondida">`;
+            }
+            if (replyText) {
+                replyContentHTML += `<p>${replyText}</p>`;
+            }
             replyHTML = `
             <div class="reply-context">
                 <strong>${replyAuthor}</strong>
-                <p>${data.reply_context.message_text}</p>
+                ${replyContentHTML}
             </div>
         `;
         }
-    
+
+        let imageHTML = '';
+        if (data.image_url) {
+            imageHTML = `<img src="${data.image_url}" alt="Imagen adjunta">`;
+        }
+
         if (data.is_deleted) {
             messageBubble.classList.add('deleted-message');
             messageBubble.innerHTML = `
@@ -854,67 +871,131 @@ function initMainController() {
             ${replyHTML}
             <span class="message-info">${username}</span>
             <div class="message-content">
-                <p>${data.message}</p>
+                <p>${formattedMessage}</p>
                 <span class="message-time">${time}</span>
-            </div>`;
+            </div>
+            ${imageHTML}`;
         }
-    
+
+        messagesContainer.appendChild(messageBubble);
+        messagesContainer.parentElement.scrollTop = messagesContainer.parentElement.scrollHeight;
+    };
+    const prependMessage = (data) => {
+        const messagesContainer = document.getElementById('chat-messages-container');
+        if (!messagesContainer) return;
+
+        const isSentByCurrentUser = data.user_id === window.PROJECT_CONFIG.userId;
+        const messageClass = isSentByCurrentUser ? 'sent' : 'received';
+        const username = isSentByCurrentUser ? 'Tú' : data.username;
+        const time = formatMessageTime(data.timestamp);
+        const formattedMessage = formatMessageText(data.message);
+
+        const messageBubble = document.createElement('div');
+        messageBubble.className = `message-bubble ${messageClass}`;
+        messageBubble.dataset.messageId = data.message_id;
+        messageBubble.dataset.authorId = data.user_id;
+        messageBubble.dataset.timestamp = data.timestamp;
+
+        let replyHTML = '';
+        if (data.reply_context && !data.is_deleted) {
+            const replyAuthor = data.reply_context.username === window.PROJECT_CONFIG.username ? 'Tú' : data.reply_context.username;
+            const replyText = data.reply_context.message_text;
+            const replyImage = data.reply_context.image_url;
+
+            let replyContentHTML = '';
+            if (replyImage) {
+                replyContentHTML += `<img src="${replyImage}" class="reply-thumbnail" alt="Imagen respondida">`;
+            }
+            if (replyText) {
+                replyContentHTML += `<p>${replyText}</p>`;
+            }
+
+            replyHTML = `
+            <div class="reply-context">
+                <strong>${replyAuthor}</strong>
+                 ${replyContentHTML}
+            </div>
+        `;
+        }
+
+        let imageHTML = '';
+        if (data.image_url) {
+            imageHTML = `<img src="${data.image_url}" alt="Imagen adjunta">`;
+        }
+
+        if (data.is_deleted) {
+            messageBubble.classList.add('deleted-message');
+            messageBubble.innerHTML = `
+            <div class="message-content">
+                <p><em>${data.message}</em></p>
+            </div>`;
+        } else {
+            messageBubble.innerHTML = `
+            ${replyHTML}
+            <span class="message-info">${username}</span>
+            <div class="message-content">
+                <p>${formattedMessage}</p>
+                <span class="message-time">${time}</span>
+            </div>
+            ${imageHTML}`;
+        }
+
         messagesContainer.insertBefore(messageBubble, messagesContainer.firstChild);
     };
 
     const loadChat = async (groupInfo) => {
         const messagesContainer = document.getElementById('chat-messages-container');
         const chatMessagesWrapper = document.getElementById('chat-messages-wrapper');
-    
+
         currentMessagesOffset = 0;
         isLoadingMessages = false;
         hasMoreMessages = true;
-    
+
         if (chatScrollHandler) {
             chatMessagesWrapper.removeEventListener('scroll', chatScrollHandler);
         }
-    
+
         chatScrollHandler = () => {
             if (chatMessagesWrapper.scrollTop === 0) {
                 loadMoreMessages(groupInfo.uuid);
             }
         };
-    
+
         chatMessagesWrapper.addEventListener('scroll', chatScrollHandler);
-    
+
         if (!groupInfo || !groupInfo.uuid) {
             console.error("No se proporcionó información del grupo para cargar el chat.");
             handleNavigationChange('home');
             return;
         }
-    
+
         document.getElementById('chat-messages-menu-title').textContent = 'Cargando...';
         document.getElementById('members-group-title').textContent = 'Cargando...';
         messagesContainer.innerHTML = '<div class="loader"></div>';
-    
+
         try {
             const [detailsResponse, membersResponse] = await Promise.all([
                 fetch(`${window.PROJECT_CONFIG.apiUrl}?action=get_group_details&group_uuid=${groupInfo.uuid}`),
                 fetch(`${window.PROJECT_CONFIG.apiUrl}?action=get_group_members&group_uuid=${groupInfo.uuid}`)
             ]);
-    
+
             const detailsData = await detailsResponse.json();
             const membersData = await membersResponse.json();
-    
+
             if (detailsData.success && membersData.success) {
                 const realTitle = detailsData.group.group_title;
                 activeChatGroup = { uuid: groupInfo.uuid, title: realTitle, type: groupInfo.type || 'messages' };
                 updatePageTitle('chat', activeChatGroup);
                 document.getElementById('chat-messages-menu-title').textContent = realTitle;
                 document.getElementById('members-group-title').textContent = realTitle;
-    
+
                 allChatMembers = membersData.members;
                 updateMembersList([], document.getElementById('chat-members-list-page'));
-    
+
                 messagesContainer.innerHTML = '';
                 await loadMoreMessages(groupInfo.uuid);
                 connectWebSocket(groupInfo.uuid);
-    
+
             } else {
                 const errorMessage = detailsData.message || membersData.message || 'Ocurrió un error inesperado.';
                 alert(errorMessage);
@@ -926,62 +1007,69 @@ function initMainController() {
             handleNavigationChange('home');
         }
     };
-    
-    // --- INICIO DE LA MODIFICACIÓN ---
+
+    const showWelcomeMessageIfNeeded = () => {
+        const messagesContainer = document.getElementById('chat-messages-container');
+        const welcomeMessage = document.getElementById('chat-welcome-message');
+        if (messagesContainer && welcomeMessage) {
+            const hasMessages = messagesContainer.querySelector('.message-bubble');
+            welcomeMessage.style.display = hasMessages ? 'none' : 'flex';
+        }
+    };
+
     const loadMoreMessages = async (groupUuid) => {
         if (isLoadingMessages || !hasMoreMessages) return;
         isLoadingMessages = true;
-    
+
         const loaderContainer = document.getElementById('chat-loader-container');
+        const welcomeMessage = document.getElementById('chat-welcome-message');
         const chatMessagesWrapper = document.getElementById('chat-messages-wrapper');
         const messagesContainer = document.getElementById('chat-messages-container');
         if (loaderContainer) loaderContainer.style.display = 'flex';
-    
+        if (welcomeMessage) welcomeMessage.style.display = 'none';
+
         try {
             const response = await fetch(`${window.PROJECT_CONFIG.apiUrl}?action=get_chat_messages&group_uuid=${groupUuid}&offset=${currentMessagesOffset}`);
             const data = await response.json();
-    
+
+            if (data.success && data.messages.length === 0 && currentMessagesOffset === 0) {
+                hasMoreMessages = false;
+                showWelcomeMessageIfNeeded();
+                return;
+            }
+
             if (data.success && data.messages.length > 0) {
                 const oldScrollHeight = chatMessagesWrapper.scrollHeight;
-    
-                const firstVisibleBubble = messagesContainer.querySelector('.message-bubble:first-child');
-                let dateOfFirstVisibleMessage = firstVisibleBubble ? new Date(firstVisibleBubble.dataset.timestamp).toDateString() : null;
-    
-                for (let i = data.messages.length - 1; i >= 0; i--) {
-                    prependMessage(data.messages[i]);
-                }
-    
-                const newestMessageFromBatch = data.messages[data.messages.length - 1];
-                const dateOfNewestMessageInBatch = new Date(newestMessageFromBatch.timestamp).toDateString();
-    
-                if (dateOfFirstVisibleMessage && dateOfNewestMessageInBatch !== dateOfFirstVisibleMessage) {
-                    const separator = document.createElement('div');
-                    separator.className = 'chat-date-separator';
-                    separator.innerHTML = `<span>${formatDateSeparator(new Date(dateOfFirstVisibleMessage))}</span>`;
-                    messagesContainer.insertBefore(separator, firstVisibleBubble);
-                }
-    
+
+                data.messages.forEach(message => {
+                    prependMessage(message);
+                });
+
+                let lastDate = null;
+                const allMessages = messagesContainer.querySelectorAll('.message-bubble');
+                messagesContainer.querySelectorAll('.chat-date-separator').forEach(sep => sep.remove());
+
+                allMessages.forEach(bubble => {
+                    const messageDate = new Date(bubble.dataset.timestamp).toDateString();
+                    if (messageDate !== lastDate) {
+                        const separator = document.createElement('div');
+                        separator.className = 'chat-date-separator';
+                        separator.innerHTML = `<span>${formatDateSeparator(bubble.dataset.timestamp)}</span>`;
+                        messagesContainer.insertBefore(separator, bubble);
+                        lastDate = messageDate;
+                    }
+                });
+
                 if (currentMessagesOffset === 0) {
-                    let lastDate = null;
-                    messagesContainer.querySelectorAll('.message-bubble').forEach(bubble => {
-                        const messageDate = new Date(bubble.dataset.timestamp).toDateString();
-                        if(messageDate !== lastDate) {
-                            const separator = document.createElement('div');
-                            separator.className = 'chat-date-separator';
-                            separator.innerHTML = `<span>${formatDateSeparator(bubble.dataset.timestamp)}</span>`;
-                            messagesContainer.insertBefore(separator, bubble);
-                            lastDate = messageDate;
-                        }
-                    });
+                    chatMessagesWrapper.scrollTop = chatMessagesWrapper.scrollHeight;
+                } else {
+                    chatMessagesWrapper.scrollTop = chatMessagesWrapper.scrollHeight - oldScrollHeight;
                 }
-    
-                chatMessagesWrapper.scrollTop = chatMessagesWrapper.scrollHeight - oldScrollHeight;
                 currentMessagesOffset += data.messages.length;
-    
             } else {
                 hasMoreMessages = false;
             }
-    
+
             if (data.messages.length < 50) {
                 hasMoreMessages = false;
             }
@@ -991,10 +1079,10 @@ function initMainController() {
         } finally {
             isLoadingMessages = false;
             if (loaderContainer) loaderContainer.style.display = 'none';
+            showWelcomeMessageIfNeeded();
         }
     };
-    // --- FIN DE LA MODIFICACIÓN ---
-    
+
     const updateMembersList = (onlineUserIds) => {
         const container = document.getElementById('chat-members-list-page');
         if (!container) return;
@@ -1019,13 +1107,13 @@ function initMainController() {
                 roleCard.className = 'card';
 
                 const roleName = role.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                
+
                 let cardHTML = `<div class="card-item with-divider member-list-header"><strong>${roleName}s</strong></div>`;
 
                 membersByRole[role].forEach((member, index) => {
                     const isOnline = onlineUserIds.includes(member.id);
                     const statusClass = isOnline ? 'online' : 'offline';
-                    
+
                     const dividerClass = index < membersByRole[role].length - 1 ? 'with-divider' : '';
 
                     cardHTML += `
@@ -1040,7 +1128,7 @@ function initMainController() {
                         </div>
                     `;
                 });
-                
+
                 roleCard.innerHTML = cardHTML;
                 container.appendChild(roleCard);
             }
@@ -1051,13 +1139,13 @@ function initMainController() {
         const wasExploreActive = isSectionExploreActive;
         const wasChatActive = isSectionChatActive;
         resetUIComponents();
-    
+
         if (wasChatActive && section !== 'chat') {
             if (websocket) {
                 websocket.close();
             }
             currentChatGroupUUID = null;
-    
+
             const chatMessagesWrapper = document.getElementById('chat-messages-wrapper');
             if (chatMessagesWrapper && chatScrollHandler) {
                 chatMessagesWrapper.removeEventListener('scroll', chatScrollHandler);
@@ -1092,11 +1180,11 @@ function initMainController() {
             activeChatGroup = subsection;
             setSectionActive(sectionChat, [sectionHome, sectionExplore, sectionSettings, sectionHelp], 'chat', false);
             const sub = subsection.type || 'messages';
-            
-            if(sub === 'messages') {
+
+            if (sub === 'messages') {
                 setSubSectionActive(sectionChat, [sectionChatMembers], 'messages', updateUrl);
                 updateChatMenuButtons('toggleChatMessages');
-            } else if(sub === 'members') {
+            } else if (sub === 'members') {
                 setSubSectionActive(sectionChatMembers, [sectionChat], 'members', updateUrl);
                 updateChatMenuButtons('toggleChatMembers');
             }
@@ -1579,10 +1667,11 @@ function initMainController() {
         `;
     };
 
-    const reportMessage = async (messageId) => {
+    const reportMessage = async (messageId, reportImage) => {
         const formData = new FormData();
         formData.append('action', 'report_message');
         formData.append('message_id', messageId);
+        formData.append('report_image', reportImage);
         formData.append('csrf_token', window.PROJECT_CONFIG.csrfToken);
 
         try {
@@ -1603,6 +1692,7 @@ function initMainController() {
             closeAccountActionModal();
         }
     };
+
 
     function setupEventListeners() {
         toggleOptionsButton.addEventListener('click', (e) => {
@@ -1653,8 +1743,21 @@ function initMainController() {
                 }
             });
         }
-        
+
         document.body.addEventListener('click', (e) => {
+            const attachButton = e.target.closest('[data-action="toggle-attach-dropdown"]');
+            if (attachButton) {
+                e.stopPropagation();
+                openAttachDropdown(attachButton);
+            }
+
+            const attachPhoto = e.target.closest('[data-action="attach-photo"]');
+            if (attachPhoto) {
+                e.stopPropagation();
+                document.getElementById('image-input').click();
+                closeAttachDropdown();
+            }
+
             const replyButton = e.target.closest('[data-action="reply-message"]');
             if (replyButton) {
                 e.stopPropagation();
@@ -1662,13 +1765,36 @@ function initMainController() {
                 if (messageBubble) {
                     const messageId = messageBubble.dataset.messageId;
                     const author = messageBubble.querySelector('.message-info').textContent;
-                    const text = messageBubble.querySelector('.message-content p').textContent;
+                    const textElement = messageBubble.querySelector('.message-content p');
+                    const text = textElement ? textElement.textContent.trim() : '';
+                    const imageElement = messageBubble.querySelector(':scope > img');
+                    const imageUrl = imageElement ? imageElement.src : null;
 
                     currentReplyMessageId = messageId;
 
+                    // --- INICIO DE LA MODIFICACIÓN ---
                     const previewContainer = document.getElementById('reply-preview-container');
+                    const previewText = previewContainer.querySelector('.reply-preview-text');
+                    const previewImage = previewContainer.querySelector('.reply-preview-image');
+
                     previewContainer.querySelector('.reply-preview-author').textContent = author;
-                    previewContainer.querySelector('.reply-preview-text').textContent = text;
+
+                    if (imageUrl) {
+                        previewImage.src = imageUrl;
+                        previewImage.style.display = 'block';
+                    } else {
+                        previewImage.style.display = 'none';
+                    }
+
+                    if (text) {
+                        previewText.textContent = text;
+                        previewText.style.display = 'block';
+                    } else {
+                        previewText.textContent = '';
+                        previewText.style.display = 'none';
+                    }
+                    // --- FIN DE LA MODIFICACIÓN ---
+
                     previewContainer.classList.remove('disabled');
                     previewContainer.classList.add('active');
 
@@ -1685,6 +1811,14 @@ function initMainController() {
                 previewContainer.classList.remove('active');
             }
 
+            const cancelImagePreviewButton = e.target.closest('[data-action="cancel-image-preview"]');
+            if (cancelImagePreviewButton) {
+                currentImageFile = null;
+                const previewContainer = document.getElementById('image-preview-container');
+                previewContainer.classList.add('disabled');
+                document.getElementById('image-input').value = '';
+            }
+
             const reportButton = e.target.closest('[data-action="report-message"]');
             if (reportButton) {
                 e.stopPropagation();
@@ -1692,17 +1826,35 @@ function initMainController() {
                 if (messageBubble) {
                     const messageId = messageBubble.dataset.messageId;
                     const messageText = messageBubble.querySelector('.message-content p').textContent;
+                    const imageElement = messageBubble.querySelector('img');
+                    const imageUrl = imageElement ? imageElement.src : null;
 
                     const reportDialog = document.querySelector('[data-dialog="reportMessage"]');
                     if (reportDialog) {
                         reportDialog.querySelector('.reported-message-text').textContent = messageText;
                         reportDialog.querySelector('input[name="message_id"]').value = messageId;
 
+                        const reportImage = reportDialog.querySelector('.reported-message-image');
+                        const reportOptions = reportDialog.querySelector('.report-options');
+                        const reportCheckbox = reportDialog.querySelector('#report-image-checkbox');
+
+                        if (imageUrl) {
+                            reportImage.src = imageUrl;
+                            reportImage.style.display = 'block';
+                            reportOptions.style.display = 'block';
+                            reportCheckbox.checked = true; // Pre-seleccionar si hay imagen
+                        } else {
+                            reportImage.style.display = 'none';
+                            reportOptions.style.display = 'none';
+                            reportCheckbox.checked = false;
+                        }
+
                         closeAllModules();
                         openAccountActionModal('reportMessage');
                     }
                 }
             }
+
 
             const deleteButton = e.target.closest('[data-action="delete-message"]');
             if (deleteButton) {
@@ -1743,9 +1895,12 @@ function initMainController() {
                 const reportDialog = confirmReportButton.closest('[data-dialog="reportMessage"]');
                 if (reportDialog) {
                     const messageId = reportDialog.querySelector('input[name="message_id"]').value;
-                    reportMessage(messageId);
+                    const reportImageCheckbox = reportDialog.querySelector('#report-image-checkbox');
+                    const shouldReportImage = reportImageCheckbox.checked && reportDialog.querySelector('.reported-message-image').style.display !== 'none';
+                    reportMessage(messageId, shouldReportImage);
                 }
             }
+
 
             const copyButton = e.target.closest('[data-action="copy-message"]');
             if (copyButton) {
@@ -1778,28 +1933,125 @@ function initMainController() {
         });
 
         const chatForm = document.getElementById('chat-form');
-        if (chatForm) {
-            chatForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const input = chatForm.querySelector('.chat-input-field');
-                const message = input.value.trim();
+        const chatInput = chatForm?.querySelector('.chat-input-field');
+        const imageInput = document.getElementById('image-input');
+        const mentionContainer = document.getElementById('mention-container');
+        const mentionList = document.getElementById('mention-list');
+        let isMentioning = false;
 
-                if (message && websocket && websocket.readyState === WebSocket.OPEN) {
-                    const messageData = {
-                        type: 'chat_message',
-                        message: message,
-                        reply_to_message_id: currentReplyMessageId
+        if (imageInput) {
+            imageInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    currentImageFile = file;
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        document.getElementById('image-preview').src = event.target.result;
+                        document.getElementById('image-preview-container').classList.remove('disabled');
                     };
-                    websocket.send(JSON.stringify(messageData));
-                    input.value = '';
-
-                    currentReplyMessageId = null;
-                    const previewContainer = document.getElementById('reply-preview-container');
-                    previewContainer.classList.add('disabled');
-                    previewContainer.classList.remove('active');
+                    reader.readAsDataURL(file);
                 }
             });
         }
+
+        if (chatForm && chatInput && mentionContainer && mentionList) {
+            chatInput.addEventListener('input', () => {
+                const value = chatInput.value;
+                const lastAtIndex = value.lastIndexOf('@');
+
+                if (lastAtIndex !== -1 && (lastAtIndex === 0 || /\s/.test(value[lastAtIndex - 1]))) {
+                    isMentioning = true;
+                    const searchTerm = value.substring(lastAtIndex + 1);
+                    const filteredMembers = allChatMembers.filter(member =>
+                        member.username.toLowerCase().includes(searchTerm.toLowerCase()) && member.id !== window.PROJECT_CONFIG.userId
+                    );
+
+                    if (filteredMembers.length > 0) {
+                        mentionContainer.classList.remove('disabled');
+                        mentionList.innerHTML = '';
+                        filteredMembers.forEach(member => {
+                            const item = document.createElement('div');
+                            item.className = 'mention-item';
+                            item.dataset.username = member.username;
+                            item.innerHTML = `
+                                <div class="card-info">
+                                    <strong>${member.username}</strong>
+                                    <span class="mention-item-role">${member.role.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                                </div>
+                            `;
+                            mentionList.appendChild(item);
+                        });
+                    } else {
+                        isMentioning = false;
+                        mentionContainer.classList.add('disabled');
+                    }
+                } else {
+                    isMentioning = false;
+                    mentionContainer.classList.add('disabled');
+                }
+            });
+
+            mentionList.addEventListener('click', (e) => {
+                const item = e.target.closest('.mention-item');
+                if (item) {
+                    const username = item.dataset.username;
+                    const value = chatInput.value;
+                    const lastAtIndex = value.lastIndexOf('@');
+
+                    chatInput.value = value.substring(0, lastAtIndex) + `@${username} `;
+                    isMentioning = false;
+                    mentionContainer.classList.add('disabled');
+                    chatInput.focus();
+                }
+            });
+            chatForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const message = chatInput.value.trim();
+                let imageUrl = null;
+
+                if (currentImageFile) {
+                    const formData = new FormData();
+                    formData.append('action', 'upload_image');
+                    formData.append('image', currentImageFile);
+                    formData.append('group_uuid', currentChatGroupUUID);
+                    formData.append('csrf_token', window.PROJECT_CONFIG.csrfToken);
+
+                    try {
+                        const response = await fetch(window.PROJECT_CONFIG.apiUrl, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            imageUrl = result.image_url;
+                        } else {
+                            alert(`Error al subir la imagen: ${result.message}`);
+                            return;
+                        }
+                    } catch (error) {
+                        alert('Error de conexión al subir la imagen.');
+                        return;
+                    }
+                }
+
+                if ((message || imageUrl) && websocket && websocket.readyState === WebSocket.OPEN) {
+                    const messageData = {
+                        type: 'chat_message',
+                        message: message,
+                        image_url: imageUrl,
+                        reply_to_message_id: currentReplyMessageId
+                    };
+                    websocket.send(JSON.stringify(messageData));
+                    chatInput.value = '';
+                    currentImageFile = null;
+                    document.getElementById('image-preview-container').classList.add('disabled');
+                    document.getElementById('image-input').value = '';
+                    currentReplyMessageId = null;
+                    document.getElementById('reply-preview-container').classList.add('disabled');
+                }
+            });
+        }
+
 
         const usernameInput = document.querySelector('[data-section="name"] .edit-input');
         if (usernameInput) {
@@ -2255,6 +2507,11 @@ function initMainController() {
                 const activeMessageDropdown = document.getElementById('message-options-dropdown');
                 if (activeMessageDropdown && !activeMessageDropdown.contains(e.target)) {
                     closeMessageOptions();
+                }
+
+                const activeAttachDropdown = document.getElementById('attach-dropdown');
+                if (activeAttachDropdown && !activeAttachDropdown.contains(e.target)) {
+                    closeAttachDropdown();
                 }
             });
         }
